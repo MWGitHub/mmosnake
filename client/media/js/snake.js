@@ -24372,19 +24372,28 @@ var GameState = (function (_CoreState) {
     _createClass(GameState, [{
         key: 'onEnter',
         value: function onEnter() {
+            var _this = this;
+
             this._socket = _socketIoClient2['default'].connect('http://localhost:5000');
-            var socket = this._socket;
-            socket.on('connect', function () {
-                this._isConnected = true;
+            this._socket.on('connect', function () {
+                console.log(_this._socket);
+                _this._isConnected = true;
+
+                _this._socket.on('connect_error', function () {
+                    // TODO: Switch to error state and remove game state
+                });
+
+                _this._socket.on('reconnect', function () {
+                    console.log('Reconnected!');
+                });
+
+                _this._socket.on('ping', function (data) {});
+
+                _this._socket.on('start', function (data) {
+                    console.log(data);
+                });
+
                 console.log('Connected!');
-            });
-
-            socket.on('connect_error', function () {
-                // TODO: Switch to error state and remove game state
-            });
-
-            socket.on('reconnect', function () {
-                console.log('Reconnected!');
             });
         }
     }, {

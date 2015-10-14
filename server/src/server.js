@@ -1,9 +1,8 @@
 "use strict";
 var Hapi = require('hapi');
-var socketIO = require('socket.io');
 var co = require('co');
 var logger = require('./util/logger');
-var snake = require('./snake/snake');
+var SnakePlugin = require('./snake/snake-plugin');
 
 var internals = {};
 
@@ -16,7 +15,7 @@ internals.register = function(server) {
     return new Promise(function(resolve, reject) {
         server.register([
             {
-                register: snake
+                register: SnakePlugin
             }
         ], function(err) {
             if (err) return reject(err);
