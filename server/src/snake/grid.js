@@ -166,8 +166,12 @@ class Grid {
         }
     }
 
-    getGridCopy() {
-        return [].concat(this._grid);
+    getGridCopy(x, y, width, height) {
+        if (!x || !y || !width || !height) {
+            return [].concat(this._grid);
+        } else {
+            
+        }
     }
 }
 
