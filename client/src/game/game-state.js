@@ -24,11 +24,15 @@ class GameState extends CoreState {
                 console.log('Reconnected!');
             });
 
-            this._socket.on('ping', function(data) {
-
+            this._socket.on('start', function(data) {
+                console.log(data);
             });
 
-            this._socket.on('start', function(data) {
+            this._socket.on('dead', function() {
+                console.log('dead');
+            });
+
+            this._socket.on('update', function(data) {
                 console.log(data);
             });
 

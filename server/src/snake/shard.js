@@ -26,6 +26,28 @@ internal.createFood = function(grid) {
     grid.setGridValue(empty, Grid.Keys.food);
 };
 
+/**
+ * Move in the given direction.
+ * @param {*} player the player that is moving.
+ * @param {Grid} grid the grid to move in.
+ * @param {number} index the index to move from.
+ * @param {number} direction the direction to move.
+ */
+internal.move = function(player, grid, index, direction) {
+    var value = grid.getValueInDirection(index, direction);
+    console.log(value);
+    var snake = player.snake;
+    if (value === Grid.Keys.empty || value === Grid.Keys.food) {
+        var newHead = grid.getIndexInDirection(index, direction);
+        snake.segments.push(snake.index);
+        snake.index = newHead;
+        snake.segments.shift();
+        grid.setValueInDirection(index, direction, Grid.Keys.blocked);
+    } else if (value === Grid.Keys.blocked) {
+        player.socket.emit('dead');
+    }
+};
+
 class Shard {
     constructor() {
         /**
@@ -35,18 +57,18 @@ class Shard {
         this.foodLimit = 3;
 
         /**
-         * Sockets stored by key.
+         * Players stored by socket key.
          * @type {Object<String, {}>}
          * @private
          */
-        this._sockets = {};
+        this._players = {};
 
         /**
          * Number of ticks per second.
          * @type {number}
          * @private
          */
-        this._tickRate = 4;
+        this._tickRate = 3;
 
         /**
          * Grid of the shard play area.
@@ -54,30 +76,43 @@ class Shard {
          * @private
          */
         this._grid = new Grid(20, 20);
-
-        /**
-         * Snakes with the socket ID as the key.
-         * @type {Object<String, *>}
-         * @private
-         */
-        this._snakes = {};
     }
 
+    /**
+     * Start the shard.
+     */
     start() {
-        this._interval = setInterval(this.update.bind(this), 1000 / this._tickRate);
-
+        this._interval = setInterval(this._update.bind(this), 1000 / this._tickRate);
     }
 
+    /**
+     * Stops the shard.
+     */
     stop() {
         clearInterval(this._interval);
     }
 
-    update() {
+    /**
+     * Updates the movement of the snakes.
+     * @private
+     */
+    _update() {
+        _.forEach(this._players, (player) => {
+            var snake = player.snake;
+            internal.move(player, this._grid, snake.index, snake.direction);
+        });
 
+        var simpleGrid = this._grid.getGridCopy();
+        _.forEach(this._players, (player) => {
+            player.socket.emit('update', {
+                grid: simpleGrid,
+                snake: player.snake
+            });
+        });
     }
 
     addSocket(socket) {
-        this._sockets[socket.id] = {
+        this._players[socket.id] = {
             socket: socket
         };
 
@@ -93,17 +128,17 @@ class Shard {
 
         var start = internal.getStart(this._grid);
         this._grid.setGridValue(start.index, 1);
-        this._snakes[socket.id] = {
+        this._players[socket.id].snake = {
             index: start.index,
             direction: start.direction,
             segments: [start.index, start.index, start.index]
         };
-        socket.emit('start', this._snakes[socket.id]);
+        socket.emit('start', this._players[socket.id].snake);
     }
 
     removeSocket(id) {
-        delete this._snakes[id];
-        delete this._sockets[id];
+
+        delete this._players[id];
     }
 }
 

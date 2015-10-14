@@ -24387,9 +24387,15 @@ var GameState = (function (_CoreState) {
                     console.log('Reconnected!');
                 });
 
-                _this._socket.on('ping', function (data) {});
-
                 _this._socket.on('start', function (data) {
+                    console.log(data);
+                });
+
+                _this._socket.on('dead', function () {
+                    console.log('dead');
+                });
+
+                _this._socket.on('update', function (data) {
                     console.log(data);
                 });
 
