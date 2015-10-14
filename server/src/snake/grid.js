@@ -45,7 +45,7 @@ class Grid {
 
     /**
      * Retrieves all empty spaces.
-     * @returns {number[]} the index of every empty space.
+     * @returns {Array.<number>} the index of every empty space.
      */
     getEmptySpaces() {
         var empty = [];
@@ -73,6 +73,9 @@ class Grid {
      * @param {number} value the value to set.
      */
     setGridValue(index, value) {
+        if (index < 0 || index >= this._grid.length) {
+            throw new Error('Out of bounds');
+        }
         this._grid[index] = value;
     }
 
@@ -145,33 +148,21 @@ class Grid {
      * @param {number} index the index to set from.
      * @param {number} direction the direction set.
      * @param {number} value the value to set.
+     * @returns {boolean} true if set successfully, false if unable to set.
      */
     setValueInDirection(index, direction, value) {
-        var isValid = this.getValueInDirection(index, direction) !== internals.keys.blocked;
-        if (!isValid) return;
-
-        switch (direction) {
-            case internals.cardinal.N:
-                this._grid[index - this._width] = value;
-                break;
-            case internals.cardinal.E:
-                this._grid[index + 1] = value;
-                break;
-            case internals.cardinal.S:
-                this._grid[index + this._width] = value;
-                break;
-            case internals.cardinal.W:
-                this._grid[index - 1] = value;
-                break;
-        }
+        var directionIndex = this.getIndexInDirection(index, direction);
+        if (directionIndex < 0) return false;
+        this._grid[directionIndex] = value;
+        return true;
     }
 
-    getGridCopy(x, y, width, height) {
-        if (!x || !y || !width || !height) {
-            return [].concat(this._grid);
-        } else {
-            
-        }
+    /**
+     * Get a copy of the grid.
+     * @returns {Array.<number>}
+     */
+    getGrid() {
+        return [].concat(this._grid);
     }
 }
 

@@ -24134,6 +24134,50 @@ module.exports = exports['default'];
 },{"lodash":34}],55:[function(require,module,exports){
 "use strict";
 
+/**
+ * Base class for render layers.
+ */
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var RenderLayer = (function () {
+    function RenderLayer() {
+        _classCallCheck(this, RenderLayer);
+    }
+
+    /**
+     * Renders the layer.
+     * @param {Number} dt time between updates.
+     */
+
+    _createClass(RenderLayer, [{
+        key: "render",
+        value: function render(dt) {}
+
+        /**
+         * Resizes the rendering layer.
+         * @param {Number} width the width of the layer.
+         * @param {Number} height the height of the layer.
+         */
+    }, {
+        key: "resize",
+        value: function resize(width, height) {}
+    }]);
+
+    return RenderLayer;
+})();
+
+exports["default"] = RenderLayer;
+module.exports = exports["default"];
+
+},{}],56:[function(require,module,exports){
+"use strict";
+
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
@@ -24333,7 +24377,99 @@ var StateSwitcher = (function () {
 exports["default"] = StateSwitcher;
 module.exports = exports["default"];
 
-},{"lodash":34}],56:[function(require,module,exports){
+},{"lodash":34}],57:[function(require,module,exports){
+"use strict";
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var _lodash = require('lodash');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+var _datGui = require('dat-gui');
+
+var _datGui2 = _interopRequireDefault(_datGui);
+
+var Debug = (function () {
+    function Debug() {
+        _classCallCheck(this, Debug);
+
+        /**
+         * Debug GUI.
+         * @type {dat.GUI}
+         */
+        this._gui = new _datGui2['default'].GUI();
+
+        /**
+         * Folders for the gui.
+         * @dict
+         */
+        this._folders = {};
+
+        // Add a default folder
+        this._folders.debug = this._gui.addFolder('Debug');
+        this._folders.debug.open();
+    }
+
+    /**
+     * User created global debug values and a default debug instance.
+     * @type {{instance: Debug}}
+     * @dict
+     */
+
+    /**
+     * Adds a control to the gui.
+     * @param {*} object the object containing the variable.
+     * @param {string} variable the name of the variable.
+     * @param {Object} options the folder to place the control in.
+     * options = {
+     *  folder: String,
+     *  listen: Boolean,
+     *  step: Number,
+     *  min: Number,
+     *  max: Number,
+     *  name: String
+     * }
+     */
+
+    _createClass(Debug, [{
+        key: 'addControl',
+        value: function addControl(object, variable, options) {
+            var folder;
+            options = options || {};
+            if (!options.folder) {
+                folder = this._folders.debug;
+            } else {
+                // Create new folder if none exists
+                if (!this._folders[options.folder]) {
+                    this._folders[options.folder] = this._gui.addFolder(options.folder);
+                }
+                folder = this._folders[options.folder];
+                folder.open();
+            }
+            var controller = folder.add(object, variable);
+            if (options.name) controller.name(options.name);
+            if (options.min) controller.min(options.min);
+            if (options.max) controller.max(options.max);
+            if (options.step) controller.step(options.step);
+            if (options.listen) controller.listen();
+        }
+    }]);
+
+    return Debug;
+})();
+
+Debug.Globals = {
+    instance: new Debug()
+};
+
+module.exports = Debug;
+
+},{"dat-gui":9,"lodash":34}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -24357,26 +24493,47 @@ var _socketIoClient = require('socket.io-client');
 
 var _socketIoClient2 = _interopRequireDefault(_socketIoClient);
 
+var _debugDebug = require('../debug/debug');
+
+var _debugDebug2 = _interopRequireDefault(_debugDebug);
+
 var GameState = (function (_CoreState) {
     _inherits(GameState, _CoreState);
 
-    function GameState() {
+    function GameState(stage) {
         _classCallCheck(this, GameState);
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
 
         this._socket = null;
         this._isConnected = false;
+
+        this._snake = {
+            index: 0,
+            direction: 0,
+            isAlive: false,
+            length: 0,
+            segments: []
+        };
+
+        this._grid = [];
     }
 
     _createClass(GameState, [{
+        key: 'onAdd',
+        value: function onAdd() {
+            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'index', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'direction', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'isAlive', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'length', { listen: true });
+        }
+    }, {
         key: 'onEnter',
         value: function onEnter() {
             var _this = this;
 
             this._socket = _socketIoClient2['default'].connect('http://localhost:5000');
             this._socket.on('connect', function () {
-                console.log(_this._socket);
                 _this._isConnected = true;
 
                 _this._socket.on('connect_error', function () {
@@ -24388,15 +24545,27 @@ var GameState = (function (_CoreState) {
                 });
 
                 _this._socket.on('start', function (data) {
+                    _this._snake.index = data.index;
+                    _this._snake.isAlive = data.isAlive;
+                    _this._snake.direction = data.direction;
+                    _this._snake.length = data.segments.length;
+                    _this._snake.segments = data.segments;
                     console.log(data);
                 });
 
                 _this._socket.on('dead', function () {
                     console.log('dead');
+                    this._snake.isAlive = false;
                 });
 
                 _this._socket.on('update', function (data) {
-                    console.log(data);
+                    _this._grid = data.grid;
+                    var snake = data.snake;
+                    _this._snake.index = snake.index;
+                    _this._snake.isAlive = snake.isAlive;
+                    _this._snake.direction = snake.direction;
+                    _this._snake.length = snake.segments.length;
+                    _this._snake.segments = snake.segments;
                 });
 
                 console.log('Connected!');
@@ -24418,7 +24587,7 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../core/core-state":53,"socket.io-client":39}],57:[function(require,module,exports){
+},{"../core/core-state":53,"../debug/debug":57,"socket.io-client":39}],59:[function(require,module,exports){
 "use strict";
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -24431,32 +24600,31 @@ var _coreStateSwitcher = require('./core/state-switcher');
 
 var _coreStateSwitcher2 = _interopRequireDefault(_coreStateSwitcher);
 
-var _datGui = require('dat-gui');
-
-var _datGui2 = _interopRequireDefault(_datGui);
-
 var _gameGameState = require('./game/game-state');
 
 var _gameGameState2 = _interopRequireDefault(_gameGameState);
 
+var _debugDebug = require('./debug/debug');
+
+var _debugDebug2 = _interopRequireDefault(_debugDebug);
+
+var _pixiLayer = require('./pixi/layer');
+
+var _pixiLayer2 = _interopRequireDefault(_pixiLayer);
+
 var CoreCallbacks = _coreCore2['default'].Callbacks;
 
-function resizeCanvas() {
-    var canvas = document.getElementById('canvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    var gui = new _datGui2['default'].GUI();
-    var debug = { elapsed: 0 };
-    gui.add(debug, 'elapsed').listen();
+    var elapsed = { elapsed: 0 };
+    _debugDebug2['default'].Globals.instance.addControl(elapsed, 'elapsed', { listen: true });
 
+    // Create the core to update the main loop
     var core = new _coreCore2['default'](window);
-    core.start();
-    core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
-        debug.elapsed = core.timeElapsed;
-    });
+
+    var layer = new _pixiLayer2['default'](document.getElementById('content'));
+    core.addRenderLayer(layer);
+
+    // Create the state switcher and add the states
     var stateSwitcher = new _coreStateSwitcher2['default']();
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
@@ -24465,12 +24633,110 @@ document.addEventListener('DOMContentLoaded', function () {
     stateSwitcher.addState(gameState);
     stateSwitcher.enterState(gameState);
 
+    // Start the main loop
+    core.start();
+    core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
+        elapsed.elapsed = core.timeElapsed;
+    });
+
+    var resizeCanvas = function resizeCanvas() {
+        /*
+        var canvas = document.getElementById('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        */
+        core.resize(window.innerWidth, window.innerHeight);
+    };
     resizeCanvas();
+
+    window.addEventListener('resize', resizeCanvas);
 });
 
-window.addEventListener('resize', resizeCanvas);
+},{"./core/core":54,"./core/state-switcher":56,"./debug/debug":57,"./game/game-state":58,"./pixi/layer":60}],60:[function(require,module,exports){
+"use strict";
 
-},{"./core/core":54,"./core/state-switcher":55,"./game/game-state":56,"dat-gui":9}]},{},[57])
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _coreRenderLayer = require('../core/render-layer');
+
+var _coreRenderLayer2 = _interopRequireDefault(_coreRenderLayer);
+
+/**
+ * Pixi rendering layer which will use WebGL.
+ */
+
+var PixiRenderLayer = (function (_RenderLayer) {
+  _inherits(PixiRenderLayer, _RenderLayer);
+
+  /**
+   * Creates a pixi renderer.
+   * @param {HTMLElement} element the element to attach the renderer to.
+   */
+
+  function PixiRenderLayer(element) {
+    _classCallCheck(this, PixiRenderLayer);
+
+    _get(Object.getPrototypeOf(PixiRenderLayer.prototype), "constructor", this).call(this);
+
+    /**
+     * Renderer for the layer.
+     * @type {PIXI.WebGLRenderer}
+     * @private
+     */
+    this._renderer = new PIXI.WebGLRenderer(100, 100);
+
+    /**
+     * Stage to add objects to.
+     * @type {PIXI.DisplayObjectContainer}
+     */
+    this.stage = new PIXI.Container();
+
+    // Add the renderer to the element.
+    element.appendChild(this._renderer.view);
+  }
+
+  /**
+   * Render the layer.
+   * @param {number} dt the render step size.
+   */
+
+  _createClass(PixiRenderLayer, [{
+    key: "render",
+    value: function render(dt) {
+      this._renderer.render(this.stage);
+    }
+
+    /**
+     * Resize the renderer.
+     * @param {number} width the width to set to.
+     * @param {number} height the height to set to.
+     */
+  }, {
+    key: "resize",
+    value: function resize(width, height) {
+      this._renderer.resize(width, height);
+    }
+  }]);
+
+  return PixiRenderLayer;
+})(_coreRenderLayer2["default"]);
+
+exports["default"] = PixiRenderLayer;
+module.exports = exports["default"];
+
+},{"../core/render-layer":55}]},{},[59])
 
 
 //# sourceMappingURL=snake.js.map

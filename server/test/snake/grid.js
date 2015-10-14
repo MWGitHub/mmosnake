@@ -14,7 +14,7 @@ var afterEach = lab.afterEach;
 describe('grid', function() {
     it('creates an instance with all values at zero', function(done) {
         var grid = new Grid(5, 5);
-        var arr = grid.getGridCopy();
+        var arr = grid.getGrid();
         for (var i = 0; i < arr.length; i++) {
             assert.equal(arr[i], 0);
         }
@@ -46,6 +46,10 @@ describe('grid', function() {
         grid.setGridValue(2, 1);
         assert.equal(grid.getRandomEmptySpace() < 0, true);
 
+        // Check out of bounds
+        assert.throws(()=>grid.setGridValue(20, 1));
+        assert.throws(()=>grid.setGridValue(-20, 1));
+
         done();
     });
 
@@ -54,6 +58,10 @@ describe('grid', function() {
         assert.equal(grid.getGridValue(1), 0);
         grid.setGridValue(1, 1);
         assert.equal(grid.getGridValue(1), 1);
+
+        // Check out of bounds
+        assert.throws(()=>grid.getGridValue(4));
+        assert.throws(()=>grid.getGridValue(-1));
 
         done();
     });
@@ -72,14 +80,14 @@ describe('grid', function() {
         assert.equal(grid.getIndexInDirection(3, Grid.Cardinal.N), 1);
         assert.equal(grid.getIndexInDirection(3, Grid.Cardinal.W), 2);
 
-
         done();
     });
 
-    it('sets and gets in a direction', function(done) {
+    it('sets and gets value in a direction', function(done) {
         var grid = new Grid(2, 2);
         // Check out of bounds first.
         assert.equal(grid.getValueInDirection(0, Grid.Cardinal.N), -Grid.Cardinal.N);
+        assert.equal(grid.setValueInDirection(50, Grid.Cardinal.S, 0), false);
 
         // Set in directions and check if set.
         assert.equal(grid.getValueInDirection(0, Grid.Cardinal.E), 0);
