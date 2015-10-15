@@ -85,13 +85,13 @@ class StateSwitcher {
 
     /**
      * Retrieves the first state found by name or null if none found.
-     * @param {String} name the name of the state to retrieve.
+     * @param {String} type the type of state to retrieve.
      * @returns {CoreState} the state or null if none found.
      */
-    retrieveState(name) {
+    retrieveState(type) {
         for (var i = 0; i < this._states.length; i++) {
             var state = this._states[i];
-            if (state.type === name) {
+            if (state.type === type) {
                 return state;
             }
         }

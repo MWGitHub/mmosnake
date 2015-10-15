@@ -2,6 +2,7 @@
 import Core from './core/core';
 import StateSwitcher from './core/state-switcher';
 import GameState from './game/game-state';
+import EndState from './game/end-state';
 import Debug from './debug/debug';
 import RenderLayer from './pixi/layer';
 var CoreCallbacks = Core.Callbacks;
@@ -15,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     core.updateStepSize = 1000 / 15;
     core.renderStepSize = 1000 / 15;
 
-    var layer = new RenderLayer(document.getElementById('content'));
+    var layer = new RenderLayer(document.getElementById('game'));
     core.addRenderLayer(layer);
 
     // Create the state switcher and add the states
@@ -25,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
     var gameState = new GameState(window, layer);
     stateSwitcher.addState(gameState);
+    var endState = new EndState(window, layer);
+    stateSwitcher.addState(endState);
+
     stateSwitcher.enterState(gameState);
 
     // Start the main loop
@@ -40,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.height = window.innerHeight;
         */
         //core.resize(window.innerWidth, window.innerHeight);
-        core.resize(320, 240);
+        core.resize(336, 240);
     };
     resizeCanvas();
 

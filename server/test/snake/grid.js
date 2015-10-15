@@ -12,9 +12,37 @@ var beforeEach = lab.beforeEach;
 var afterEach = lab.afterEach;
 
 describe('grid', function() {
+    function getBlockCount(grid) {
+        var count = 0;
+        for (var i = 0; i < grid.length; i++) {
+            if (grid[i] === Grid.Keys.blocked) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Prints a grid.
+     * @param grid
+     * @param width
+     * @returns {string}
+     */
+    function prettyPrint(grid, width) {
+        var out = '';
+        for (var i = 0; i < grid.length; i++) {
+            if (i % width === 0) {
+                out += '\n';
+            }
+            out += grid[i] + ' ';
+        }
+        return out;
+    }
+
     it('creates an instance with all values at zero', function(done) {
         var grid = new Grid(5, 5);
         assert.equal(grid.width, 5);
+        assert.equal(grid.height, 5);
 
         var arr = grid.getGridArray();
         for (var i = 0; i < arr.length; i++) {
@@ -114,13 +142,46 @@ describe('grid', function() {
 
         grid = new Grid(3, 3, true);
         gridArray = grid.getGridArray();
-        for (var i = 0; i < gridArray.length; i++) {
+        for (i = 0; i < gridArray.length; i++) {
             if (i === 4) {
                 assert.equal(gridArray[i], Grid.Keys.empty);
             } else {
                 assert.equal(gridArray[i], Grid.Keys.blocked);
             }
         }
+
+        done();
+    });
+
+    it('retrieves a segment of the grid', function(done) {
+        var grid = new Grid(5, 5, true);
+        var full = grid.getGridArray();
+        assert.equal(getBlockCount(full), 16, 'should contain all blocked');
+        full = grid.getGridArray(undefined, undefined, 0);
+        assert.equal(getBlockCount(full), 16, 'should contain all blocked');
+        full = grid.getGridArray(0, undefined, 0);
+        assert.equal(getBlockCount(full), 16, 'should contain all blocked');
+
+        var sub = grid.getGridArray(6, 3, 3);
+        assert.equal(getBlockCount(sub), 5, 'should contain only 3x3 from top left');
+
+        sub = grid.getGridArray(7, 3, 3);
+        assert.equal(getBlockCount(sub), 3, 'should contain one right from last');
+
+        sub = grid.getGridArray(8, 3, 3);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(9, 3, 3);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(0, 3, 3);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(20, 3, 3);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(24, 3, 3);
+        assert.equal(getBlockCount(sub), 5);
 
         done();
     });

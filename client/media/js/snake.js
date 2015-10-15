@@ -24315,15 +24315,15 @@ var StateSwitcher = (function () {
 
         /**
          * Retrieves the first state found by name or null if none found.
-         * @param {String} name the name of the state to retrieve.
+         * @param {String} type the type of state to retrieve.
          * @returns {CoreState} the state or null if none found.
          */
     }, {
         key: "retrieveState",
-        value: function retrieveState(name) {
+        value: function retrieveState(type) {
             for (var i = 0; i < this._states.length; i++) {
                 var state = this._states[i];
-                if (state.type === name) {
+                if (state.type === type) {
                     return state;
                 }
             }
@@ -24515,6 +24515,96 @@ var _coreCoreState = require('../core/core-state');
 
 var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
 
+var EndState = (function (_CoreState) {
+    _inherits(EndState, _CoreState);
+
+    /**
+     * Creates the end state.
+     * @param window the window to attach input events to.
+     * @param {RenderLayer} layer the layer to add children to.
+     */
+
+    function EndState(window, layer) {
+        _classCallCheck(this, EndState);
+
+        _get(Object.getPrototypeOf(EndState.prototype), 'constructor', this).call(this);
+
+        this.type = 'EndState';
+
+        this._window = window;
+        this._layer = layer;
+
+        this._container = null;
+
+        this._keyDown = this._onKeyDown.bind(this);
+    }
+
+    _createClass(EndState, [{
+        key: '_onKeyDown',
+        value: function _onKeyDown(e) {
+            var key = e.key || e.keyIdentifier || e.keyCode;
+            if (key === 'U+0052') {
+                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+            }
+        }
+    }, {
+        key: 'onEnter',
+        value: function onEnter(options) {
+            console.log('entering end state');
+            this._container = new PIXI.Container();
+            this._layer.addChild(this._container);
+            this._window.addEventListener('keydown', this._keyDown);
+
+            var text = new PIXI.Text('Score\n' + options.score + '\npress R to restart', {
+                fill: "#FFFFFF",
+                align: 'center'
+            });
+            text.position.x = 60;
+            text.position.y = 50;
+            this._container.addChild(text);
+        }
+    }, {
+        key: 'update',
+        value: function update(dt) {}
+    }, {
+        key: 'preRender',
+        value: function preRender() {}
+    }, {
+        key: 'onLeave',
+        value: function onLeave() {
+            console.log('leaving end state');
+            this._window.removeEventListener('keydown', this._keyDown);
+
+            this._layer.removeChild(this._container);
+        }
+    }]);
+
+    return EndState;
+})(_coreCoreState2['default']);
+
+exports['default'] = EndState;
+module.exports = exports['default'];
+
+},{"../core/core-state":53}],59:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _coreCoreState = require('../core/core-state');
+
+var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
+
 var _socketIoClient = require('socket.io-client');
 
 var _socketIoClient2 = _interopRequireDefault(_socketIoClient);
@@ -24550,9 +24640,13 @@ var GameState = (function (_CoreState) {
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
 
+        this.type = 'GameState';
+
         this._window = window;
         this._layer = layer;
         this._socket = null;
+
+        this._container = null;
 
         this._debug = {
             index: 0,
@@ -24566,10 +24660,14 @@ var GameState = (function (_CoreState) {
         this._grid = [];
         this._width = 0;
 
+        this._screenWidth = 21;
+        this._screenHeight = 15;
+
         this._blocks = [];
         this._blockWidth = 16;
 
         this._keyDown = this._onKeyDown.bind(this);
+        this._previousKeyDown = null;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -24600,20 +24698,30 @@ var GameState = (function (_CoreState) {
         key: '_onKeyDown',
         value: function _onKeyDown(e) {
             if (!this._socket) return;
-            var key = event.key || event.keyIdentifier || event.keyCode;
+            var key = e.key || e.keyIdentifier || e.keyCode;
+            // Prevent spamming emits
+            if (this._previousKeyDown === key) return;
+            var emitted = false;
             switch (key) {
                 case 'Up':
                     this._socket.emit('direct', { direction: cardinal.N });
+                    emitted = true;
                     break;
                 case 'Right':
                     this._socket.emit('direct', { direction: cardinal.E });
+                    emitted = true;
                     break;
                 case 'Down':
                     this._socket.emit('direct', { direction: cardinal.S });
+                    emitted = true;
                     break;
                 case 'Left':
                     this._socket.emit('direct', { direction: cardinal.W });
+                    emitted = true;
                     break;
+            }
+            if (emitted) {
+                this._previousKeyDown = key;
             }
         }
     }, {
@@ -24621,7 +24729,13 @@ var GameState = (function (_CoreState) {
         value: function onEnter() {
             var _this = this;
 
-            this._socket = _socketIoClient2['default'].connect('http://localhost:5000');
+            console.log('entering game state');
+            this._container = new PIXI.Container();
+            this._layer.addChild(this._container);
+
+            this._socket = _socketIoClient2['default'].connect('http://localhost:5000', {
+                'force new connection': true
+            });
             this._socket.on('connect', function () {
                 _this._socket.on('connect_error', function () {
                     // TODO: Switch to error state and remove game state
@@ -24642,9 +24756,12 @@ var GameState = (function (_CoreState) {
                     _this._debug.segments = snake.segments;
                 });
 
-                _this._socket.on('die', function () {
+                _this._socket.on('die', function (data) {
                     console.log('dead');
                     _this._debug.isAlive = false;
+                    _this.switcher.switchState(_this, _this.switcher.retrieveState('EndState'), null, {
+                        score: data.score
+                    });
                 });
 
                 _this._socket.on('update', function (data) {
@@ -24671,7 +24788,7 @@ var GameState = (function (_CoreState) {
         value: function preRender() {
             var i;
             for (i = 0; i < this._blocks.length; i++) {
-                this._layer.removeChild(this._blocks[i]);
+                this._container.removeChild(this._blocks[i]);
             }
             this._blocks = [];
             for (i = 0; i < this._grid.length; i++) {
@@ -24683,11 +24800,11 @@ var GameState = (function (_CoreState) {
                 }
 
                 if (block) {
-                    var col = i % this._width;
-                    var row = Math.floor(i / this._width);
+                    var col = i % this._screenWidth;
+                    var row = Math.floor(i / this._screenWidth);
                     block.position.x = col * this._blockWidth;
                     block.position.y = row * this._blockWidth;
-                    this._layer.addChild(block);
+                    this._container.addChild(block);
                     this._blocks.push(block);
                 }
             }
@@ -24695,7 +24812,14 @@ var GameState = (function (_CoreState) {
     }, {
         key: 'onLeave',
         value: function onLeave() {
+            console.log('leaving game state');
             this._window.removeEventListener('keydown', this._keyDown);
+
+            if (this._socket) {
+                this._socket.emit('disconnect');
+            }
+
+            this._layer.removeChild(this._container);
         }
     }]);
 
@@ -24705,7 +24829,7 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../core/core-state":53,"../debug/debug":57,"socket.io-client":39}],59:[function(require,module,exports){
+},{"../core/core-state":53,"../debug/debug":57,"socket.io-client":39}],60:[function(require,module,exports){
 "use strict";
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -24721,6 +24845,10 @@ var _coreStateSwitcher2 = _interopRequireDefault(_coreStateSwitcher);
 var _gameGameState = require('./game/game-state');
 
 var _gameGameState2 = _interopRequireDefault(_gameGameState);
+
+var _gameEndState = require('./game/end-state');
+
+var _gameEndState2 = _interopRequireDefault(_gameEndState);
 
 var _debugDebug = require('./debug/debug');
 
@@ -24741,7 +24869,7 @@ document.addEventListener('DOMContentLoaded', function () {
     core.updateStepSize = 1000 / 15;
     core.renderStepSize = 1000 / 15;
 
-    var layer = new _pixiLayer2['default'](document.getElementById('content'));
+    var layer = new _pixiLayer2['default'](document.getElementById('game'));
     core.addRenderLayer(layer);
 
     // Create the state switcher and add the states
@@ -24751,6 +24879,9 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
     var gameState = new _gameGameState2['default'](window, layer);
     stateSwitcher.addState(gameState);
+    var endState = new _gameEndState2['default'](window, layer);
+    stateSwitcher.addState(endState);
+
     stateSwitcher.enterState(gameState);
 
     // Start the main loop
@@ -24766,14 +24897,14 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.height = window.innerHeight;
         */
         //core.resize(window.innerWidth, window.innerHeight);
-        core.resize(320, 240);
+        core.resize(336, 240);
     };
     resizeCanvas();
 
     window.addEventListener('resize', resizeCanvas);
 });
 
-},{"./core/core":54,"./core/state-switcher":56,"./debug/debug":57,"./game/game-state":58,"./pixi/layer":60}],60:[function(require,module,exports){
+},{"./core/core":54,"./core/state-switcher":56,"./debug/debug":57,"./game/end-state":58,"./game/game-state":59,"./pixi/layer":61}],61:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -24816,7 +24947,7 @@ var PixiRenderLayer = (function (_RenderLayer) {
          * @type {PIXI.WebGLRenderer}
          * @private
          */
-        this._renderer = new PIXI.WebGLRenderer(100, 100);
+        this._renderer = new PIXI.WebGLRenderer(100, 100, { view: element });
 
         /**
          * Stage to add objects to.
@@ -24825,7 +24956,7 @@ var PixiRenderLayer = (function (_RenderLayer) {
         this.stage = new PIXI.Container();
 
         // Add the renderer to the element.
-        element.appendChild(this._renderer.view);
+        //element.appendChild(this._renderer.view);
     }
 
     /**
@@ -24887,7 +25018,7 @@ var PixiRenderLayer = (function (_RenderLayer) {
 exports["default"] = PixiRenderLayer;
 module.exports = exports["default"];
 
-},{"../core/render-layer":55}]},{},[59])
+},{"../core/render-layer":55}]},{},[60])
 
 
 //# sourceMappingURL=snake.js.map

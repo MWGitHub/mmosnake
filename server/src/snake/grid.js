@@ -35,6 +35,7 @@ class Grid {
      */
     constructor(w, h, areEdgesBlocked) {
         this._width = w;
+        this._height = h;
 
         this._grid = [];
 
@@ -166,10 +167,47 @@ class Grid {
 
     /**
      * Get a copy of the grid.
+     * @param {number=} index the centered index to retrieve from.
+     * @param {number=} width the width of the grid to retrieve.
+     * @param {number=} height the height of the grid to retrieve.
      * @returns {Array.<number>}
      */
-    getGridArray() {
-        return [].concat(this._grid);
+    getGridArray(index, width, height) {
+        if (index !== undefined && width !== undefined && height !== undefined) {
+            var out = [];
+            var x = 0;
+            var y = 0;
+            // Check if left and right side is out of bounds and recenter
+            var left = index % this._width  - Math.floor(width / 2);
+            var right = index % this._width + Math.floor(width / 2);
+            if (left < 0) {
+                x = 0;
+            } else if (right >= this._width) {
+                x = this._width - width;
+            } else {
+                x = index % this._width - Math.floor(width / 2);
+            }
+            // Check if top and bottom is out of bounds and recenter
+            var top = Math.floor(index / this._width) - Math.floor(height / 2);
+            var bottom = Math.floor(index / this._width) + Math.floor(height / 2);
+            if (top < 0) {
+                y = 0;
+            } else if (bottom >= this._height) {
+                y = this._height - height;
+            } else {
+                y = Math.floor(index / this._width) - Math.floor(height / 2);
+            }
+
+            // Create the sub grid
+            for (var row = y; row < y + height; row++) {
+               for (var col = x; col < x + width; col++) {
+                   out.push(this._grid[row * this._width + col]);
+               }
+            }
+            return out;
+        } else {
+            return [].concat(this._grid);
+        }
     }
 
     /**
@@ -178,6 +216,14 @@ class Grid {
      */
     get width() {
         return this._width;
+    }
+
+    /**
+     * Retrieve the height of the grid.
+     * @returns {number}
+     */
+    get height() {
+        return this._height;
     }
 }
 

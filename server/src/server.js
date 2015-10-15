@@ -3,6 +3,7 @@ var Hapi = require('hapi');
 var co = require('co');
 var logger = require('./util/logger');
 var SnakePlugin = require('./snake/snake-plugin');
+var Config = require('../config.json');
 
 var internals = {};
 
@@ -15,7 +16,14 @@ internals.register = function(server) {
     return new Promise(function(resolve, reject) {
         server.register([
             {
-                register: SnakePlugin
+                register: SnakePlugin,
+                options: {
+                    gridWidth: Config.gridWidth,
+                    gridHeight: Config.gridHeight,
+                    screenWidth: Config.screenWidth,
+                    screenHeight: Config.screenHeight,
+                    food: Config.food
+                }
             }
         ], function(err) {
             if (err) return reject(err);

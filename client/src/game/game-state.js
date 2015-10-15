@@ -25,9 +25,13 @@ class GameState extends CoreState {
     constructor(window, layer) {
         super();
 
+        this.type = 'GameState';
+
         this._window = window;
         this._layer = layer;
         this._socket = null;
+
+        this._container = null;
 
         this._debug = {
             index: 0,
@@ -41,10 +45,14 @@ class GameState extends CoreState {
         this._grid = [];
         this._width = 0;
 
+        this._screenWidth = 21;
+        this._screenHeight = 15;
+
         this._blocks = [];
         this._blockWidth = 16;
 
         this._keyDown = this._onKeyDown.bind(this);
+        this._previousKeyDown = null;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -72,25 +80,41 @@ class GameState extends CoreState {
 
     _onKeyDown(e) {
         if (!this._socket) return;
-        var key = event.key || event.keyIdentifier || event.keyCode;
+        var key = e.key || e.keyIdentifier || e.keyCode;
+        // Prevent spamming emits
+        if (this._previousKeyDown === key) return;
+        var emitted = false;
         switch (key) {
             case 'Up':
                 this._socket.emit('direct', {direction: cardinal.N});
+                emitted = true;
                 break;
             case 'Right':
                 this._socket.emit('direct', {direction: cardinal.E});
+                emitted = true;
                 break;
             case 'Down':
                 this._socket.emit('direct', {direction: cardinal.S});
+                emitted = true;
                 break;
             case 'Left':
                 this._socket.emit('direct', {direction: cardinal.W});
+                emitted = true;
                 break;
+        }
+        if (emitted) {
+            this._previousKeyDown = key;
         }
     }
 
     onEnter() {
-        this._socket = io.connect('http://localhost:5000');
+        console.log('entering game state');
+        this._container = new PIXI.Container();
+        this._layer.addChild(this._container);
+
+        this._socket = io.connect('http://localhost:5000', {
+            'force new connection': true
+        });
         this._socket.on('connect', () => {
             this._socket.on('connect_error', function() {
                 // TODO: Switch to error state and remove game state
@@ -111,9 +135,12 @@ class GameState extends CoreState {
                 this._debug.segments = snake.segments;
             });
 
-            this._socket.on('die', () => {
+            this._socket.on('die', (data) => {
                 console.log('dead');
                 this._debug.isAlive = false;
+                this.switcher.switchState(this, this.switcher.retrieveState('EndState'), null, {
+                    score: data.score
+                });
             });
 
             this._socket.on('update', (data) => {
@@ -139,7 +166,7 @@ class GameState extends CoreState {
     preRender() {
         var i;
         for (i = 0; i < this._blocks.length; i++) {
-            this._layer.removeChild(this._blocks[i]);
+            this._container.removeChild(this._blocks[i]);
         }
         this._blocks = [];
         for (i = 0; i < this._grid.length; i++) {
@@ -151,18 +178,25 @@ class GameState extends CoreState {
             }
 
             if (block) {
-                var col = i % this._width;
-                var row = Math.floor(i / this._width);
+                var col = i % this._screenWidth;
+                var row = Math.floor(i / this._screenWidth);
                 block.position.x = col * this._blockWidth;
                 block.position.y = row * this._blockWidth;
-                this._layer.addChild(block);
+                this._container.addChild(block);
                 this._blocks.push(block);
             }
         }
     }
 
     onLeave() {
+        console.log('leaving game state');
         this._window.removeEventListener('keydown', this._keyDown);
+
+        if (this._socket) {
+            this._socket.emit('disconnect');
+        }
+
+        this._layer.removeChild(this._container);
     }
 }
 

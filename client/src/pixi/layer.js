@@ -18,7 +18,7 @@ class PixiRenderLayer extends RenderLayer {
          * @type {PIXI.WebGLRenderer}
          * @private
          */
-        this._renderer = new PIXI.WebGLRenderer(100, 100);
+        this._renderer = new PIXI.WebGLRenderer(100, 100, {view: element});
 
         /**
          * Stage to add objects to.
@@ -27,7 +27,7 @@ class PixiRenderLayer extends RenderLayer {
         this.stage = new PIXI.Container();
 
         // Add the renderer to the element.
-        element.appendChild(this._renderer.view);
+        //element.appendChild(this._renderer.view);
     }
 
     /**

@@ -40,31 +40,34 @@ internals.createFood = function(grid) {
     return false;
 };
 
-/**
- * Checks if the directions given are the opposite.
- * @param {number} d1 the first direction.
- * @param {number} d2 the second direction.
- * @returns {boolean} true if the directions are opposite.
- */
-internals.isOppositeDirection = function(d1, d2) {
-    return (d1 === Grid.Cardinal.N && d2 === Grid.Cardinal.S ||
-            d1 === Grid.Cardinal.S && d2 === Grid.Cardinal.N ||
-            d1 === Grid.Cardinal.E && d2 === Grid.Cardinal.W ||
-            d1 === Grid.Cardinal.W && d2 === Grid.Cardinal.E);
-};
-
 class Shard {
     /**
      * Create the shard with the given width and height.
-     * @param {number} w the width to give the shard.
-     * @param {number} h the height to give the shard.
+     * @param {number} width the width to give the shard.
+     * @param {number} height the height to give the shard.
+     * @param {number=} screenWidth the width of a game screen, defaults to width.
+     * @param {number=} screenHeight the height of a game screen, defaults to height.
      */
-    constructor(w, h) {
+    constructor(width, height, screenWidth, screenHeight) {
         /**
          * Number of food available at any given time.
          * @type {number}
          */
         this.foodLimit = 3;
+
+        /**
+         * Width of the game screen.
+         * @type {number}
+         * @private
+         */
+        this._screenWidth = screenWidth || width;
+
+        /**
+         * Height of the game screen.
+         * @type {number}
+         * @private
+         */
+        this._screenHeight = screenHeight || height;
 
         /**
          * Players stored by socket key.
@@ -85,7 +88,7 @@ class Shard {
          * @type {Grid}
          * @private
          */
-        this._grid = new Grid(w, h, true);
+        this._grid = new Grid(width, height, true);
 
         /**
          * Number of food on the board.
@@ -150,12 +153,12 @@ class Shard {
 
         // Update the grid of every player
         var players = this.playerCount;
-        var gridArray = this._grid.getGridArray();
         _.forEach(this._players, (player) => {
             if (player.snake.isAlive) {
+                var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight);
                 player.socket.emit(internals.commands.update, {
                     players: players,
-                    grid: gridArray,
+                    grid: grid,
                     snake: player.snake
                 });
             }
@@ -209,7 +212,9 @@ class Shard {
         }
         this._grid.setGridValue(player.snake.index, Grid.Keys.empty);
         player.snake.isAlive = false;
-        player.socket.emit(internals.commands.die);
+        player.socket.emit(internals.commands.die, {
+            score: player.snake.segments.length
+        });
     }
 
     /**
@@ -239,11 +244,31 @@ class Shard {
         }
 
         player.socket.emit(internals.commands.start, {
-            grid: this.getGridArray(),
+            grid: this.getGridArray(player.snake.index, this._screenWidth, this._screenHeight),
             players: this.playerCount,
             width: this._grid.width,
             snake: player.snake
         });
+    }
+
+    /**
+     * Checks if the directions given are the opposite.
+     * @param {*} player the player to check.
+     * @param {number} d1 the first direction.
+     * @param {number} d2 the second direction.
+     * @returns {boolean} true if the directions are opposite.
+     */
+    _isOppositeDirection(player, d1, d2) {
+        // Check if trying to move into the previous segment (happens when moving too fast)
+        var next = this._grid.getIndexInDirection(player.snake.index, d1);
+        if (player.snake.segments.length > 0 && player.snake.segments[0] === next) {
+            return true;
+        }
+        // Check if trying to move backwards
+        return (d1 === Grid.Cardinal.N && d2 === Grid.Cardinal.S ||
+        d1 === Grid.Cardinal.S && d2 === Grid.Cardinal.N ||
+        d1 === Grid.Cardinal.E && d2 === Grid.Cardinal.W ||
+        d1 === Grid.Cardinal.W && d2 === Grid.Cardinal.E);
     }
 
     /**
@@ -257,7 +282,7 @@ class Shard {
             this.removePlayer(player);
         } else {
             // Ignore if moving backwards
-            if (internals.isOppositeDirection(direction, player.snake.direction)) {
+            if (this._isOppositeDirection(player, direction, player.snake.direction)) {
                 return;
             }
             player.snake.direction = direction;
