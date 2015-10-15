@@ -7,6 +7,7 @@ import EndState from './game/end-state';
 import BotState from './game/bot-state';
 import Debug from './debug/debug';
 import RenderLayer from './pixi/layer';
+import Config from '../config.json';
 var CoreCallbacks = Core.Callbacks;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -50,9 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.height = window.innerHeight;
         */
         //core.resize(window.innerWidth, window.innerHeight);
-        core.resize(336, 240);
+        core.resize(Config.screenWidth * Config.blockWidth, Config.screenHeight * Config.blockWidth);
     };
     resizeCanvas();
 
-    window.addEventListener('resize', resizeCanvas);
+    //window.addEventListener('resize', resizeCanvas);
 });

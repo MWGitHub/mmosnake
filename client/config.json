@@ -1,0 +1,6 @@
+{
+  "host": "http://localhost:5000",
+  "screenWidth": 21,
+  "screenHeight": 15,
+  "blockWidth": 16
+}

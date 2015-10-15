@@ -3,6 +3,7 @@ import CoreState from '../core/core-state';
 import io from 'socket.io-client';
 import Debug from '../debug/debug';
 import _ from 'lodash';
+import Config from '../../config.json';
 
 var cardinal = {
     N: 1,
@@ -58,7 +59,7 @@ class BotState extends CoreState {
     }
 
     _createBot() {
-        var socket = io.connect('http://localhost:5000', {
+        var socket = io.connect(Config.host, {
             'force new connection': true
         });
         socket.on('connect', () => {
