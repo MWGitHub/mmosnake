@@ -81,7 +81,7 @@ class Shard {
          * @type {number}
          * @private
          */
-        this._tickRate = 3;
+        this._tickRate = 6;
 
         /**
          * Grid of the shard play area.
