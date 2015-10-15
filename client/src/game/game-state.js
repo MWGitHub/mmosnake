@@ -82,29 +82,19 @@ class GameState extends CoreState {
     _onKeyDown(e) {
         if (!this._socket) return;
         var key = e.key || e.keyIdentifier || e.keyCode;
-        // Prevent spamming emits
-        if (this._previousKeyDown === key) return;
-        var emitted = false;
         switch (key) {
             case 'Up':
                 this._socket.emit('direct', {direction: cardinal.N});
-                emitted = true;
                 break;
             case 'Right':
                 this._socket.emit('direct', {direction: cardinal.E});
-                emitted = true;
                 break;
             case 'Down':
                 this._socket.emit('direct', {direction: cardinal.S});
-                emitted = true;
                 break;
             case 'Left':
                 this._socket.emit('direct', {direction: cardinal.W});
-                emitted = true;
                 break;
-        }
-        if (emitted) {
-            this._previousKeyDown = key;
         }
     }
 
