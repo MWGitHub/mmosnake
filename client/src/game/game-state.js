@@ -2,6 +2,7 @@
 import CoreState from '../core/core-state';
 import io from 'socket.io-client';
 import Debug from '../debug/debug';
+import Config from '../../config.json';
 
 var gridKey = {
     empty: 0,
@@ -45,11 +46,11 @@ class GameState extends CoreState {
         this._grid = [];
         this._width = 0;
 
-        this._screenWidth = 21;
-        this._screenHeight = 15;
+        this._screenWidth = Config.screenWidth;
+        this._screenHeight = Config.screenHeight;
 
         this._blocks = [];
-        this._blockWidth = 16;
+        this._blockWidth = Config.blockWidth;
 
         this._keyDown = this._onKeyDown.bind(this);
         this._previousKeyDown = null;
@@ -112,7 +113,7 @@ class GameState extends CoreState {
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
 
-        this._socket = io.connect('http://localhost:5000', {
+        this._socket = io.connect(Config.host, {
             'force new connection': true
         });
         this._socket.on('connect', () => {
