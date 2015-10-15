@@ -5,21 +5,29 @@ import Debug from '../debug/debug';
 
 var gridKey = {
     empty: 0,
-    block: 1,
+    blocked: 1,
     food: 2
+};
+
+var cardinal = {
+    N: 1,
+    E: 2,
+    S: 3,
+    W: 4
 };
 
 class GameState extends CoreState {
     /**
      * Creates the game state.
+     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
      */
-    constructor(layer) {
+    constructor(window, layer) {
         super();
 
+        this._window = window;
         this._layer = layer;
         this._socket = null;
-        this._isConnected = false;
 
         this._debug = {
             index: 0,
@@ -36,13 +44,22 @@ class GameState extends CoreState {
         this._blocks = [];
         this._blockWidth = 16;
 
-        // Create an instance of a blocking texture.
+        this._keyDown = this._onKeyDown.bind(this);
+
+        // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new PIXI.Graphics();
         graphics.beginFill(0xFFFFFF);
         graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
         graphics.endFill();
         this._blockTexture.render(graphics);
+
+        // Create an instance of the food texture
+        this._foodTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockHeight);
+        graphics = new PIXI.Graphics();
+        graphics.beginFill(0xFFFFFF);
+        graphics.drawCircle(this._blockWidth / 2, this._blockWidth / 2, this._blockWidth / 2);
+        this._foodTexture.render(graphics);
     }
 
     onAdd() {
@@ -53,11 +70,28 @@ class GameState extends CoreState {
         Debug.Globals.instance.addControl(this._debug, 'players', {listen: true});
     }
 
+    _onKeyDown(e) {
+        if (!this._socket) return;
+        var key = event.key || event.keyIdentifier || event.keyCode;
+        switch (key) {
+            case 'Up':
+                this._socket.emit('direct', {direction: cardinal.N});
+                break;
+            case 'Right':
+                this._socket.emit('direct', {direction: cardinal.E});
+                break;
+            case 'Down':
+                this._socket.emit('direct', {direction: cardinal.S});
+                break;
+            case 'Left':
+                this._socket.emit('direct', {direction: cardinal.W});
+                break;
+        }
+    }
+
     onEnter() {
         this._socket = io.connect('http://localhost:5000');
         this._socket.on('connect', () => {
-            this._isConnected = true;
-
             this._socket.on('connect_error', function() {
                 // TODO: Switch to error state and remove game state
             });
@@ -68,6 +102,7 @@ class GameState extends CoreState {
 
             this._socket.on('start', (data) => {
                 var snake = data.snake;
+                this._grid = data.grid;
                 this._width = data.width;
                 this._debug.index = snake.index;
                 this._debug.isAlive = snake.isAlive;
@@ -82,8 +117,8 @@ class GameState extends CoreState {
             });
 
             this._socket.on('update', (data) => {
-                this._grid = data.grid;
                 var snake = data.snake;
+                this._grid = data.grid;
                 this._debug.players = data.players;
                 this._debug.index = snake.index;
                 this._debug.isAlive = snake.isAlive;
@@ -92,14 +127,13 @@ class GameState extends CoreState {
                 this._debug.segments = snake.segments;
             });
 
+            this._window.addEventListener('keydown', this._keyDown);
+
             console.log('Connected!');
         });
     }
 
     update(dt) {
-        if (!this._isConnected) return;
-
-        // Handle inputs
     }
 
     preRender() {
@@ -110,8 +144,10 @@ class GameState extends CoreState {
         this._blocks = [];
         for (i = 0; i < this._grid.length; i++) {
             var block = null;
-            if (this._grid[i] === gridKey.block) {
+            if (this._grid[i] === gridKey.blocked) {
                 block = new PIXI.Sprite(this._blockTexture);
+            } else if (this._grid[i] === gridKey.food) {
+                block = new PIXI.Sprite(this._foodTexture);
             }
 
             if (block) {
@@ -126,7 +162,7 @@ class GameState extends CoreState {
     }
 
     onLeave() {
-
+        this._window.removeEventListener('keydown', this._keyDown);
     }
 }
 

@@ -104,4 +104,24 @@ describe('grid', function() {
 
         done();
     });
+
+    it('blocks the edges', function(done) {
+        var grid = new Grid(2, 2, true);
+        var gridArray = grid.getGridArray();
+        for (var i = 0; i < gridArray.length; i++) {
+            assert.equal(gridArray[i], Grid.Keys.blocked);
+        }
+
+        grid = new Grid(3, 3, true);
+        gridArray = grid.getGridArray();
+        for (var i = 0; i < gridArray.length; i++) {
+            if (i === 4) {
+                assert.equal(gridArray[i], Grid.Keys.empty);
+            } else {
+                assert.equal(gridArray[i], Grid.Keys.blocked);
+            }
+        }
+
+        done();
+    });
 });

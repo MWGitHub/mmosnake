@@ -24525,8 +24525,15 @@ var _debugDebug2 = _interopRequireDefault(_debugDebug);
 
 var gridKey = {
     empty: 0,
-    block: 1,
+    blocked: 1,
     food: 2
+};
+
+var cardinal = {
+    N: 1,
+    E: 2,
+    S: 3,
+    W: 4
 };
 
 var GameState = (function (_CoreState) {
@@ -24534,17 +24541,18 @@ var GameState = (function (_CoreState) {
 
     /**
      * Creates the game state.
+     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
      */
 
-    function GameState(layer) {
+    function GameState(window, layer) {
         _classCallCheck(this, GameState);
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
 
+        this._window = window;
         this._layer = layer;
         this._socket = null;
-        this._isConnected = false;
 
         this._debug = {
             index: 0,
@@ -24561,13 +24569,22 @@ var GameState = (function (_CoreState) {
         this._blocks = [];
         this._blockWidth = 16;
 
-        // Create an instance of a blocking texture.
+        this._keyDown = this._onKeyDown.bind(this);
+
+        // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new PIXI.Graphics();
         graphics.beginFill(0xFFFFFF);
         graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
         graphics.endFill();
         this._blockTexture.render(graphics);
+
+        // Create an instance of the food texture
+        this._foodTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockHeight);
+        graphics = new PIXI.Graphics();
+        graphics.beginFill(0xFFFFFF);
+        graphics.drawCircle(this._blockWidth / 2, this._blockWidth / 2, this._blockWidth / 2);
+        this._foodTexture.render(graphics);
     }
 
     _createClass(GameState, [{
@@ -24580,14 +24597,32 @@ var GameState = (function (_CoreState) {
             _debugDebug2['default'].Globals.instance.addControl(this._debug, 'players', { listen: true });
         }
     }, {
+        key: '_onKeyDown',
+        value: function _onKeyDown(e) {
+            if (!this._socket) return;
+            var key = event.key || event.keyIdentifier || event.keyCode;
+            switch (key) {
+                case 'Up':
+                    this._socket.emit('direct', { direction: cardinal.N });
+                    break;
+                case 'Right':
+                    this._socket.emit('direct', { direction: cardinal.E });
+                    break;
+                case 'Down':
+                    this._socket.emit('direct', { direction: cardinal.S });
+                    break;
+                case 'Left':
+                    this._socket.emit('direct', { direction: cardinal.W });
+                    break;
+            }
+        }
+    }, {
         key: 'onEnter',
         value: function onEnter() {
             var _this = this;
 
             this._socket = _socketIoClient2['default'].connect('http://localhost:5000');
             this._socket.on('connect', function () {
-                _this._isConnected = true;
-
                 _this._socket.on('connect_error', function () {
                     // TODO: Switch to error state and remove game state
                 });
@@ -24598,6 +24633,7 @@ var GameState = (function (_CoreState) {
 
                 _this._socket.on('start', function (data) {
                     var snake = data.snake;
+                    _this._grid = data.grid;
                     _this._width = data.width;
                     _this._debug.index = snake.index;
                     _this._debug.isAlive = snake.isAlive;
@@ -24612,8 +24648,8 @@ var GameState = (function (_CoreState) {
                 });
 
                 _this._socket.on('update', function (data) {
-                    _this._grid = data.grid;
                     var snake = data.snake;
+                    _this._grid = data.grid;
                     _this._debug.players = data.players;
                     _this._debug.index = snake.index;
                     _this._debug.isAlive = snake.isAlive;
@@ -24622,16 +24658,14 @@ var GameState = (function (_CoreState) {
                     _this._debug.segments = snake.segments;
                 });
 
+                _this._window.addEventListener('keydown', _this._keyDown);
+
                 console.log('Connected!');
             });
         }
     }, {
         key: 'update',
-        value: function update(dt) {
-            if (!this._isConnected) return;
-
-            // Handle inputs
-        }
+        value: function update(dt) {}
     }, {
         key: 'preRender',
         value: function preRender() {
@@ -24642,8 +24676,10 @@ var GameState = (function (_CoreState) {
             this._blocks = [];
             for (i = 0; i < this._grid.length; i++) {
                 var block = null;
-                if (this._grid[i] === gridKey.block) {
+                if (this._grid[i] === gridKey.blocked) {
                     block = new PIXI.Sprite(this._blockTexture);
+                } else if (this._grid[i] === gridKey.food) {
+                    block = new PIXI.Sprite(this._foodTexture);
                 }
 
                 if (block) {
@@ -24658,7 +24694,9 @@ var GameState = (function (_CoreState) {
         }
     }, {
         key: 'onLeave',
-        value: function onLeave() {}
+        value: function onLeave() {
+            this._window.removeEventListener('keydown', this._keyDown);
+        }
     }]);
 
     return GameState;
@@ -24711,7 +24749,7 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-    var gameState = new _gameGameState2['default'](layer);
+    var gameState = new _gameGameState2['default'](window, layer);
     stateSwitcher.addState(gameState);
     stateSwitcher.enterState(gameState);
 

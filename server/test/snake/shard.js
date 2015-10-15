@@ -14,17 +14,19 @@ var beforeEach = lab.beforeEach;
 var afterEach = lab.afterEach;
 
 describe('shard', function() {
+    var defaultDimensions = 5;
+
     var defaultStart = {
-        index: 0,
+        index: 6,
         direction: Grid.Cardinal.E,
-        segments: [0, 0, 0],
+        segments: [6, 6, 6],
         isAlive: true
     };
 
     it('should setup with the the starting amount of food', function(done) {
         var limit = 3;
         for (var i = 0; i < 10; i++) {
-            var shard = new Shard(3, 3);
+            var shard = new Shard(defaultDimensions, defaultDimensions);
             shard.foodLimit = limit;
             shard.setup();
 
@@ -49,7 +51,7 @@ describe('shard', function() {
     });
 
     it('should add and remove players on connect and disconnect', function(done) {
-        var shard = new Shard(5, 5);
+        var shard = new Shard(defaultDimensions, defaultDimensions);
         shard.setup();
         var serverSocket1 = new Socket();
         var serverSocket2 = new Socket();
@@ -66,9 +68,9 @@ describe('shard', function() {
             clientSocket1.removeListener('update', updateListener);
             serverSocket2.link(clientSocket2);
             shard.addSocket(serverSocket2, {
-                index: 5,
+                index: 11,
                 direction: Grid.Cardinal.E,
-                segments: [0, 0, 0],
+                segments: [11, 11, 11],
                 isAlive: true
             });
             ticks++;
@@ -96,7 +98,7 @@ describe('shard', function() {
     });
 
     it('should remove a player from the server side', function(done) {
-        var shard = new Shard(3, 3);
+        var shard = new Shard(defaultDimensions, defaultDimensions);
         shard.setup();
         var serverSocket = new Socket();
         var clientSocket = new Socket();
@@ -117,6 +119,7 @@ describe('shard', function() {
     });
 
     it('should move and stretch from the start and remove all segments when dead', function(done) {
+        var edgeBlockCount = 24;
         var countBlocks = function(grid) {
             var count = 0;
             for (var i = 0; i < grid.length; i++) {
@@ -124,10 +127,10 @@ describe('shard', function() {
                     count++;
                 }
             }
-            return count;
+            return count - edgeBlockCount;
         };
 
-        var shard = new Shard(5, 5);
+        var shard = new Shard(7, 7);
         shard.setup();
         var serverSocket = new Socket();
         var clientSocket = new Socket();
@@ -138,6 +141,7 @@ describe('shard', function() {
         });
 
         clientSocket.on('update', (data) => {
+            // On 5th tick the head should reach the end of the map
             if (ticks < 4) {
                 assert.equal(countBlocks(data.grid), ticks + 1, 'should take up 1 (head) + 1 segment.length per tick');
                 ticks++;
@@ -149,23 +153,20 @@ describe('shard', function() {
         });
 
         clientSocket.on('die', (data) => {
-            console.log('dead');
             assert.equal(ticks, 5);
-            console.log(shard.getGridArray());
             assert.equal(countBlocks(shard.getGridArray()), 0, 'should take no space on death');
             done();
         });
 
         var snake = {
-            index: 0,
+            index: 8,
             direction: Grid.Cardinal.E,
-            segments: [0, 0, 0],
+            segments: [8, 8, 8],
             isAlive: true
         };
 
         serverSocket.link(clientSocket);
         shard.addSocket(serverSocket, snake);
-
 
 
         ticks++;

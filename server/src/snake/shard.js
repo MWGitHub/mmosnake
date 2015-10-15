@@ -40,6 +40,19 @@ internals.createFood = function(grid) {
     return false;
 };
 
+/**
+ * Checks if the directions given are the opposite.
+ * @param {number} d1 the first direction.
+ * @param {number} d2 the second direction.
+ * @returns {boolean} true if the directions are opposite.
+ */
+internals.isOppositeDirection = function(d1, d2) {
+    return (d1 === Grid.Cardinal.N && d2 === Grid.Cardinal.S ||
+            d1 === Grid.Cardinal.S && d2 === Grid.Cardinal.N ||
+            d1 === Grid.Cardinal.E && d2 === Grid.Cardinal.W ||
+            d1 === Grid.Cardinal.W && d2 === Grid.Cardinal.E);
+};
+
 class Shard {
     /**
      * Create the shard with the given width and height.
@@ -72,7 +85,7 @@ class Shard {
          * @type {Grid}
          * @private
          */
-        this._grid = new Grid(w, h);
+        this._grid = new Grid(w, h, true);
 
         /**
          * Number of food on the board.
@@ -239,9 +252,14 @@ class Shard {
      * @param {number} direction the direction to set to.
      */
     _direct(player, direction) {
-        if (!_.includes(direction)) {
+        // Remove the player if an invalid direction is given
+        if (!_.includes(Grid.Cardinal, direction)) {
             this.removePlayer(player);
         } else {
+            // Ignore if moving backwards
+            if (internals.isOppositeDirection(direction, player.snake.direction)) {
+                return;
+            }
             player.snake.direction = direction;
         }
     }

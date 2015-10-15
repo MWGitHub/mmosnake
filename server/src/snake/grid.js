@@ -28,17 +28,25 @@ var internals = {
  */
 class Grid {
     /**
-     * Creates the grid with values set to 0.
+     * Creates the grid with values set to 0 unless edges are blocked.
      * @param {number} w the width of the grid.
      * @param {number} h the height of the grid.
+     * @param {boolean=} areEdgesBlocked true to set edge tiles to blocked.
      */
-    constructor(w, h) {
+    constructor(w, h, areEdgesBlocked) {
         this._width = w;
 
         this._grid = [];
 
         for (var i = 0; i < w * h; i++) {
-            this._grid.push(0);
+            var value = 0;
+            if (areEdgesBlocked) {
+                if (Math.floor(i / w) === 0 || Math.floor(i / w) === h - 1 ||
+                    i % w === 0 || i % w === w - 1) {
+                    value = internals.keys.blocked;
+                }
+            }
+            this._grid.push(value);
         }
     }
 

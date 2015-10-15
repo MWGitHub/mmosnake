@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-    var gameState = new GameState(layer);
+    var gameState = new GameState(window, layer);
     stateSwitcher.addState(gameState);
     stateSwitcher.enterState(gameState);
 
