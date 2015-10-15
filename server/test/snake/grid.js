@@ -14,7 +14,9 @@ var afterEach = lab.afterEach;
 describe('grid', function() {
     it('creates an instance with all values at zero', function(done) {
         var grid = new Grid(5, 5);
-        var arr = grid.getGrid();
+        assert.equal(grid.width, 5);
+
+        var arr = grid.getGridArray();
         for (var i = 0; i < arr.length; i++) {
             assert.equal(arr[i], 0);
         }

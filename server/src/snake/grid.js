@@ -34,7 +34,6 @@ class Grid {
      */
     constructor(w, h) {
         this._width = w;
-        this._height = h;
 
         this._grid = [];
 
@@ -161,8 +160,16 @@ class Grid {
      * Get a copy of the grid.
      * @returns {Array.<number>}
      */
-    getGrid() {
+    getGridArray() {
         return [].concat(this._grid);
+    }
+
+    /**
+     * Retrieve the width of the grid.
+     * @returns {number}
+     */
+    get width() {
+        return this._width;
     }
 }
 

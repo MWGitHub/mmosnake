@@ -46,6 +46,30 @@ class PixiRenderLayer extends RenderLayer {
     resize(width, height) {
         this._renderer.resize(width, height);
     }
+
+    /**
+     * Adds a child to the layer.
+     * @param child the child to add to the layer.
+     */
+    addChild(child) {
+        this.stage.addChild(child);
+    }
+
+    /**
+     * Removes a child from the layer.
+     * @param child the child to remove from the layer.
+     */
+    removeChild(child) {
+        this.stage.removeChild(child);
+    }
+
+    /**
+     * Retrieve the renderer.
+     * @returns {PIXI.WebGLRenderer}
+     */
+    get renderer() {
+        return this._renderer;
+    }
 }
 
 

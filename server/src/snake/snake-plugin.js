@@ -10,7 +10,7 @@ var snake = {
         });
 
         // Create a single shard instance for now
-        var shard = new SnakeShard();
+        var shard = new SnakeShard(20, 20);
         io.on('connection', function(socket) {
             shard.addSocket(socket);
             Logger.info('New connection');

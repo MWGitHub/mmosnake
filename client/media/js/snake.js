@@ -24167,6 +24167,32 @@ var RenderLayer = (function () {
     }, {
         key: "resize",
         value: function resize(width, height) {}
+    }, {
+        key: "addChild",
+
+        /**
+         * Adds a child to the layer.
+         * @param child the child to add to the layer.
+         */
+        value: function addChild(child) {}
+    }, {
+        key: "removeChild",
+
+        /**
+         * Removes a child from the layer.
+         * @param child the child to remove from the layer.
+         */
+        value: function removeChild(child) {}
+    }, {
+        key: "renderer",
+
+        /**
+         * Retrieve the renderer used for the layer.
+         * @returns {*} the renderer.
+         */
+        get: function get() {
+            return null;
+        }
     }]);
 
     return RenderLayer;
@@ -24497,35 +24523,61 @@ var _debugDebug = require('../debug/debug');
 
 var _debugDebug2 = _interopRequireDefault(_debugDebug);
 
+var gridKey = {
+    empty: 0,
+    block: 1,
+    food: 2
+};
+
 var GameState = (function (_CoreState) {
     _inherits(GameState, _CoreState);
 
-    function GameState(stage) {
+    /**
+     * Creates the game state.
+     * @param {RenderLayer} layer the layer to add children to.
+     */
+
+    function GameState(layer) {
         _classCallCheck(this, GameState);
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
 
+        this._layer = layer;
         this._socket = null;
         this._isConnected = false;
 
-        this._snake = {
+        this._debug = {
             index: 0,
             direction: 0,
             isAlive: false,
             length: 0,
-            segments: []
+            segments: [],
+            players: 0
         };
 
         this._grid = [];
+        this._width = 0;
+
+        this._blocks = [];
+        this._blockWidth = 16;
+
+        // Create an instance of a blocking texture.
+        this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
+        var graphics = new PIXI.Graphics();
+        graphics.beginFill(0xFFFFFF);
+        graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
+        graphics.endFill();
+        this._blockTexture.render(graphics);
     }
 
     _createClass(GameState, [{
         key: 'onAdd',
         value: function onAdd() {
-            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'index', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'direction', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'isAlive', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._snake, 'length', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'index', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'direction', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'isAlive', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'length', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'players', { listen: true });
         }
     }, {
         key: 'onEnter',
@@ -24545,27 +24597,29 @@ var GameState = (function (_CoreState) {
                 });
 
                 _this._socket.on('start', function (data) {
-                    _this._snake.index = data.index;
-                    _this._snake.isAlive = data.isAlive;
-                    _this._snake.direction = data.direction;
-                    _this._snake.length = data.segments.length;
-                    _this._snake.segments = data.segments;
-                    console.log(data);
+                    var snake = data.snake;
+                    _this._width = data.width;
+                    _this._debug.index = snake.index;
+                    _this._debug.isAlive = snake.isAlive;
+                    _this._debug.direction = snake.direction;
+                    _this._debug.length = snake.segments.length;
+                    _this._debug.segments = snake.segments;
                 });
 
-                _this._socket.on('dead', function () {
+                _this._socket.on('die', function () {
                     console.log('dead');
-                    this._snake.isAlive = false;
+                    _this._debug.isAlive = false;
                 });
 
                 _this._socket.on('update', function (data) {
                     _this._grid = data.grid;
                     var snake = data.snake;
-                    _this._snake.index = snake.index;
-                    _this._snake.isAlive = snake.isAlive;
-                    _this._snake.direction = snake.direction;
-                    _this._snake.length = snake.segments.length;
-                    _this._snake.segments = snake.segments;
+                    _this._debug.players = data.players;
+                    _this._debug.index = snake.index;
+                    _this._debug.isAlive = snake.isAlive;
+                    _this._debug.direction = snake.direction;
+                    _this._debug.length = snake.segments.length;
+                    _this._debug.segments = snake.segments;
                 });
 
                 console.log('Connected!');
@@ -24575,6 +24629,32 @@ var GameState = (function (_CoreState) {
         key: 'update',
         value: function update(dt) {
             if (!this._isConnected) return;
+
+            // Handle inputs
+        }
+    }, {
+        key: 'preRender',
+        value: function preRender() {
+            var i;
+            for (i = 0; i < this._blocks.length; i++) {
+                this._layer.removeChild(this._blocks[i]);
+            }
+            this._blocks = [];
+            for (i = 0; i < this._grid.length; i++) {
+                var block = null;
+                if (this._grid[i] === gridKey.block) {
+                    block = new PIXI.Sprite(this._blockTexture);
+                }
+
+                if (block) {
+                    var col = i % this._width;
+                    var row = Math.floor(i / this._width);
+                    block.position.x = col * this._blockWidth;
+                    block.position.y = row * this._blockWidth;
+                    this._layer.addChild(block);
+                    this._blocks.push(block);
+                }
+            }
         }
     }, {
         key: 'onLeave',
@@ -24620,6 +24700,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Create the core to update the main loop
     var core = new _coreCore2['default'](window);
+    core.updateStepSize = 1000 / 15;
+    core.renderStepSize = 1000 / 15;
 
     var layer = new _pixiLayer2['default'](document.getElementById('content'));
     core.addRenderLayer(layer);
@@ -24629,7 +24711,7 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-    var gameState = new _gameGameState2['default'](stateSwitcher);
+    var gameState = new _gameGameState2['default'](layer);
     stateSwitcher.addState(gameState);
     stateSwitcher.enterState(gameState);
 
@@ -24645,7 +24727,8 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         */
-        core.resize(window.innerWidth, window.innerHeight);
+        //core.resize(window.innerWidth, window.innerHeight);
+        core.resize(320, 240);
     };
     resizeCanvas();
 
@@ -24656,7 +24739,7 @@ document.addEventListener('DOMContentLoaded', function () {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+    value: true
 });
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -24678,59 +24761,89 @@ var _coreRenderLayer2 = _interopRequireDefault(_coreRenderLayer);
  */
 
 var PixiRenderLayer = (function (_RenderLayer) {
-  _inherits(PixiRenderLayer, _RenderLayer);
-
-  /**
-   * Creates a pixi renderer.
-   * @param {HTMLElement} element the element to attach the renderer to.
-   */
-
-  function PixiRenderLayer(element) {
-    _classCallCheck(this, PixiRenderLayer);
-
-    _get(Object.getPrototypeOf(PixiRenderLayer.prototype), "constructor", this).call(this);
+    _inherits(PixiRenderLayer, _RenderLayer);
 
     /**
-     * Renderer for the layer.
-     * @type {PIXI.WebGLRenderer}
-     * @private
+     * Creates a pixi renderer.
+     * @param {HTMLElement} element the element to attach the renderer to.
      */
-    this._renderer = new PIXI.WebGLRenderer(100, 100);
 
-    /**
-     * Stage to add objects to.
-     * @type {PIXI.DisplayObjectContainer}
-     */
-    this.stage = new PIXI.Container();
+    function PixiRenderLayer(element) {
+        _classCallCheck(this, PixiRenderLayer);
 
-    // Add the renderer to the element.
-    element.appendChild(this._renderer.view);
-  }
+        _get(Object.getPrototypeOf(PixiRenderLayer.prototype), "constructor", this).call(this);
 
-  /**
-   * Render the layer.
-   * @param {number} dt the render step size.
-   */
+        /**
+         * Renderer for the layer.
+         * @type {PIXI.WebGLRenderer}
+         * @private
+         */
+        this._renderer = new PIXI.WebGLRenderer(100, 100);
 
-  _createClass(PixiRenderLayer, [{
-    key: "render",
-    value: function render(dt) {
-      this._renderer.render(this.stage);
+        /**
+         * Stage to add objects to.
+         * @type {PIXI.DisplayObjectContainer}
+         */
+        this.stage = new PIXI.Container();
+
+        // Add the renderer to the element.
+        element.appendChild(this._renderer.view);
     }
 
     /**
-     * Resize the renderer.
-     * @param {number} width the width to set to.
-     * @param {number} height the height to set to.
+     * Render the layer.
+     * @param {number} dt the render step size.
      */
-  }, {
-    key: "resize",
-    value: function resize(width, height) {
-      this._renderer.resize(width, height);
-    }
-  }]);
 
-  return PixiRenderLayer;
+    _createClass(PixiRenderLayer, [{
+        key: "render",
+        value: function render(dt) {
+            this._renderer.render(this.stage);
+        }
+
+        /**
+         * Resize the renderer.
+         * @param {number} width the width to set to.
+         * @param {number} height the height to set to.
+         */
+    }, {
+        key: "resize",
+        value: function resize(width, height) {
+            this._renderer.resize(width, height);
+        }
+
+        /**
+         * Adds a child to the layer.
+         * @param child the child to add to the layer.
+         */
+    }, {
+        key: "addChild",
+        value: function addChild(child) {
+            this.stage.addChild(child);
+        }
+
+        /**
+         * Removes a child from the layer.
+         * @param child the child to remove from the layer.
+         */
+    }, {
+        key: "removeChild",
+        value: function removeChild(child) {
+            this.stage.removeChild(child);
+        }
+
+        /**
+         * Retrieve the renderer.
+         * @returns {PIXI.WebGLRenderer}
+         */
+    }, {
+        key: "renderer",
+        get: function get() {
+            return this._renderer;
+        }
+    }]);
+
+    return PixiRenderLayer;
 })(_coreRenderLayer2["default"]);
 
 exports["default"] = PixiRenderLayer;
