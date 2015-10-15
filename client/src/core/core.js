@@ -18,6 +18,8 @@ var callbackTypes = {
  */
 class Core {
     constructor(window) {
+        if (!window) throw new Error('No window given');
+
         /**
          * Step size to use for each update in milliseconds.
          * Set to 0 to have a variable step size.
@@ -109,6 +111,7 @@ class Core {
             this._preLoopCallbacks[i](udt);
         }
 
+        // Update in steps until caught up
         while (this._lastUpdateTime <= now) {
             this.update(udt);
             this._timeElapsed += udt;
@@ -123,7 +126,10 @@ class Core {
         for (i = 0; i < this._postLoopCallbacks.length; i++) {
             this._postLoopCallbacks[i](udt);
         }
-        this._requestAnimFrame.call(window, this._boundGameLoop);
+
+        if (this._isRunning) {
+            this._requestAnimFrame.call(this._window, this._boundGameLoop);
+        }
     }
 
     /**
@@ -157,7 +163,7 @@ class Core {
 
     /**
      * Add a render layer.
-     * @param {Layer} layer the layer to add.
+     * @param {RenderLayer} layer the layer to add.
      */
     addRenderLayer(layer) {
         this._renderLayers.push(layer);
@@ -165,7 +171,7 @@ class Core {
 
     /**
      * Remove a render layer.
-     * @param {Layer} layer the layer to remove.
+     * @param {RenderLayer} layer the layer to remove.
      */
     removeRenderLayer(layer) {
         var index = this._renderLayers.indexOf(layer);

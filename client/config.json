@@ -1,5 +1,5 @@
 {
-  "host": "http://localhost:5000",
+  "host": "http://24.187.68.93:5000",
   "screenWidth": 21,
   "screenHeight": 15,
   "blockWidth": 16
