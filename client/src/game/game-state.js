@@ -193,7 +193,7 @@ class GameState extends CoreState {
         this._window.removeEventListener('keydown', this._keyDown);
 
         if (this._socket) {
-            this._socket.emit('disconnect');
+            this._socket.disconnect();
         }
 
         this._layer.removeChild(this._container);

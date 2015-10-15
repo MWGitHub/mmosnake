@@ -1,8 +1,10 @@
 "use strict";
 import Core from './core/core';
 import StateSwitcher from './core/state-switcher';
+import StartState from './game/start-state';
 import GameState from './game/game-state';
 import EndState from './game/end-state';
+import BotState from './game/bot-state';
 import Debug from './debug/debug';
 import RenderLayer from './pixi/layer';
 var CoreCallbacks = Core.Callbacks;
@@ -24,12 +26,16 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
+    var startState = new StartState(window, layer);
+    stateSwitcher.addState(startState);
     var gameState = new GameState(window, layer);
     stateSwitcher.addState(gameState);
     var endState = new EndState(window, layer);
     stateSwitcher.addState(endState);
+    var botState = new BotState(window, layer);
+    stateSwitcher.addState(botState);
 
-    stateSwitcher.enterState(gameState);
+    stateSwitcher.enterState(startState);
 
     // Start the main loop
     core.start();

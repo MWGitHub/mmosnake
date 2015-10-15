@@ -24515,6 +24515,217 @@ var _coreCoreState = require('../core/core-state');
 
 var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
 
+var _socketIoClient = require('socket.io-client');
+
+var _socketIoClient2 = _interopRequireDefault(_socketIoClient);
+
+var _debugDebug = require('../debug/debug');
+
+var _debugDebug2 = _interopRequireDefault(_debugDebug);
+
+var _lodash = require('lodash');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+var cardinal = {
+    N: 1,
+    E: 2,
+    S: 3,
+    W: 4
+};
+
+var BotState = (function (_CoreState) {
+    _inherits(BotState, _CoreState);
+
+    /**
+     * Creates the game state.
+     * @param window the window to attach input events to.
+     * @param {RenderLayer} layer the layer to add children to.
+     */
+
+    function BotState(window, layer) {
+        _classCallCheck(this, BotState);
+
+        _get(Object.getPrototypeOf(BotState.prototype), 'constructor', this).call(this);
+
+        this.type = 'BotState';
+
+        this._window = window;
+        this._layer = layer;
+        this._sockets = [];
+
+        this._container = null;
+
+        this._numBotsText = null;
+        this._numBots = 0;
+        this._botRateText = null;
+        this._botRate = 0;
+
+        this._updateRate = 1000 / 5;
+        this._currentTimer = 0;
+
+        this._keyDown = this._onKeyDown.bind(this);
+    }
+
+    _createClass(BotState, [{
+        key: '_updateNumBotsText',
+        value: function _updateNumBotsText() {
+            this._numBotsText.text = 'Bots: ' + this._numBots;
+        }
+    }, {
+        key: '_updateBotRateText',
+        value: function _updateBotRateText() {
+            this._botRateText.text = 'Bot rate: ' + this._botRate;
+        }
+    }, {
+        key: '_removeBot',
+        value: function _removeBot(socket) {
+            var index = this._sockets.indexOf(socket);
+            if (index >= 0) {
+                socket.disconnect();
+                this._sockets.splice(index, 1);
+                this._numBots -= 1;
+                this._updateNumBotsText();
+            }
+        }
+    }, {
+        key: '_createBot',
+        value: function _createBot() {
+            var _this = this;
+
+            var socket = _socketIoClient2['default'].connect('http://localhost:5000', {
+                'force new connection': true
+            });
+            socket.on('connect', function () {
+                _this._numBots++;
+                _this._updateNumBotsText();
+
+                socket.on('die', function () {
+                    _this._removeBot(socket);
+                    _this._updateNumBotsText();
+                });
+            });
+
+            this._sockets.push(socket);
+        }
+    }, {
+        key: '_onKeyDown',
+        value: function _onKeyDown(e) {
+            var key = e.key || e.keyIdentifier || e.keyCode;
+            // Prevent spamming emits
+            if (this._previousKeyDown === key) return;
+            switch (key) {
+                case 'Up':
+                    this._createBot();
+                    break;
+                case 'Right':
+                    this._botRate++;
+                    this._updateBotRateText();
+                    break;
+                case 'Down':
+                    if (this._sockets.length > 0) {
+                        this._removeBot(this._sockets[0]);
+                    }
+                    break;
+                case 'Left':
+                    if (this._botRate > 0) {
+                        this._botRate -= 1;
+                        this._updateBotRateText();
+                    }
+                    break;
+            }
+        }
+    }, {
+        key: 'onEnter',
+        value: function onEnter() {
+            console.log('entering bot state');
+            this._container = new PIXI.Container();
+            this._layer.addChild(this._container);
+
+            this._window.addEventListener('keydown', this._keyDown);
+
+            this._numBots = 0;
+            this._botRate = 0;
+
+            var text = new PIXI.Text('UP to add bots\nDOWN to remove bots\nLEFT to decrease auto bots\nRIGHT to increase auto bots', {
+                font: 'bold 16px Arial',
+                fill: "#FFFFFF"
+            });
+            this._container.addChild(text);
+
+            this._numBotsText = new PIXI.Text('Bots: ' + this._numBots, {
+                font: 'bold 16px Arial',
+                fill: '#FFFFFF'
+            });
+            this._numBotsText.position.y = 100;
+            this._container.addChild(this._numBotsText);
+
+            this._botRateText = new PIXI.Text('Bot rate: ' + this._botRate, {
+                font: 'bold 16px Arial',
+                fill: '#FFFFFF'
+            });
+            this._botRateText.position.y = 120;
+            this._container.addChild(this._botRateText);
+        }
+    }, {
+        key: 'update',
+        value: function update(dt) {
+            if (this._currentTimer > this._updateRate) {
+                this._currentTimer = 0;
+                // Randomly direct the bots
+                for (var i = 0; i < this._sockets.length; i++) {
+                    this._sockets[i].emit('direct', {
+                        direction: _lodash2['default'].sample(cardinal)
+                    });
+                }
+                // Create bots
+                for (i = 0; i < this._botRate; i++) {
+                    this._createBot();
+                }
+            } else {
+                this._currentTimer += dt;
+            }
+        }
+    }, {
+        key: 'onLeave',
+        value: function onLeave() {
+            console.log('leaving bot state');
+            this._window.removeEventListener('keydown', this._keyDown);
+
+            for (var i = 0; i < this._sockets.length; i++) {
+                this._sockets[i].disconnect();
+            }
+
+            this._layer.removeChild(this._container);
+        }
+    }]);
+
+    return BotState;
+})(_coreCoreState2['default']);
+
+exports['default'] = BotState;
+module.exports = exports['default'];
+
+},{"../core/core-state":53,"../debug/debug":57,"lodash":34,"socket.io-client":39}],59:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _coreCoreState = require('../core/core-state');
+
+var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
+
 var EndState = (function (_CoreState) {
     _inherits(EndState, _CoreState);
 
@@ -24564,12 +24775,6 @@ var EndState = (function (_CoreState) {
             this._container.addChild(text);
         }
     }, {
-        key: 'update',
-        value: function update(dt) {}
-    }, {
-        key: 'preRender',
-        value: function preRender() {}
-    }, {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving end state');
@@ -24585,7 +24790,7 @@ var EndState = (function (_CoreState) {
 exports['default'] = EndState;
 module.exports = exports['default'];
 
-},{"../core/core-state":53}],59:[function(require,module,exports){
+},{"../core/core-state":53}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -24816,7 +25021,7 @@ var GameState = (function (_CoreState) {
             this._window.removeEventListener('keydown', this._keyDown);
 
             if (this._socket) {
-                this._socket.emit('disconnect');
+                this._socket.disconnect();
             }
 
             this._layer.removeChild(this._container);
@@ -24829,7 +25034,100 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../core/core-state":53,"../debug/debug":57,"socket.io-client":39}],60:[function(require,module,exports){
+},{"../core/core-state":53,"../debug/debug":57,"socket.io-client":39}],61:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _coreCoreState = require('../core/core-state');
+
+var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
+
+var StartState = (function (_CoreState) {
+    _inherits(StartState, _CoreState);
+
+    /**
+     * Creates the end state.
+     * @param window the window to attach input events to.
+     * @param {RenderLayer} layer the layer to add children to.
+     */
+
+    function StartState(window, layer) {
+        _classCallCheck(this, StartState);
+
+        _get(Object.getPrototypeOf(StartState.prototype), 'constructor', this).call(this);
+
+        this.type = 'StartState';
+
+        this._window = window;
+        this._layer = layer;
+
+        this._container = null;
+
+        this._keyDown = this._onKeyDown.bind(this);
+    }
+
+    _createClass(StartState, [{
+        key: '_onKeyDown',
+        value: function _onKeyDown(e) {
+            var key = e.key || e.keyIdentifier || e.keyCode;
+            if (key === 'U+0052') {
+                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+            } else if (key === 'U+0042') {
+                console.log('s');
+                this.switcher.switchState(this, this.switcher.retrieveState('BotState'));
+            }
+        }
+    }, {
+        key: 'onEnter',
+        value: function onEnter() {
+            console.log('entering start state');
+            this._container = new PIXI.Container();
+            this._layer.addChild(this._container);
+            this._window.addEventListener('keydown', this._keyDown);
+
+            var text = new PIXI.Text('press R to start\npress B to enter bot mode', {
+                fill: "#FFFFFF",
+                align: 'center'
+            });
+            text.position.x = 2;
+            text.position.y = 50;
+            this._container.addChild(text);
+        }
+    }, {
+        key: 'update',
+        value: function update(dt) {}
+    }, {
+        key: 'preRender',
+        value: function preRender() {}
+    }, {
+        key: 'onLeave',
+        value: function onLeave() {
+            console.log('leaving start state');
+            this._window.removeEventListener('keydown', this._keyDown);
+
+            this._layer.removeChild(this._container);
+        }
+    }]);
+
+    return StartState;
+})(_coreCoreState2['default']);
+
+exports['default'] = StartState;
+module.exports = exports['default'];
+
+},{"../core/core-state":53}],62:[function(require,module,exports){
 "use strict";
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -24842,6 +25140,10 @@ var _coreStateSwitcher = require('./core/state-switcher');
 
 var _coreStateSwitcher2 = _interopRequireDefault(_coreStateSwitcher);
 
+var _gameStartState = require('./game/start-state');
+
+var _gameStartState2 = _interopRequireDefault(_gameStartState);
+
 var _gameGameState = require('./game/game-state');
 
 var _gameGameState2 = _interopRequireDefault(_gameGameState);
@@ -24849,6 +25151,10 @@ var _gameGameState2 = _interopRequireDefault(_gameGameState);
 var _gameEndState = require('./game/end-state');
 
 var _gameEndState2 = _interopRequireDefault(_gameEndState);
+
+var _gameBotState = require('./game/bot-state');
+
+var _gameBotState2 = _interopRequireDefault(_gameBotState);
 
 var _debugDebug = require('./debug/debug');
 
@@ -24877,12 +25183,16 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
+    var startState = new _gameStartState2['default'](window, layer);
+    stateSwitcher.addState(startState);
     var gameState = new _gameGameState2['default'](window, layer);
     stateSwitcher.addState(gameState);
     var endState = new _gameEndState2['default'](window, layer);
     stateSwitcher.addState(endState);
+    var botState = new _gameBotState2['default'](window, layer);
+    stateSwitcher.addState(botState);
 
-    stateSwitcher.enterState(gameState);
+    stateSwitcher.enterState(startState);
 
     // Start the main loop
     core.start();
@@ -24904,7 +25214,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', resizeCanvas);
 });
 
-},{"./core/core":54,"./core/state-switcher":56,"./debug/debug":57,"./game/end-state":58,"./game/game-state":59,"./pixi/layer":61}],61:[function(require,module,exports){
+},{"./core/core":54,"./core/state-switcher":56,"./debug/debug":57,"./game/bot-state":58,"./game/end-state":59,"./game/game-state":60,"./game/start-state":61,"./pixi/layer":63}],63:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25018,7 +25328,7 @@ var PixiRenderLayer = (function (_RenderLayer) {
 exports["default"] = PixiRenderLayer;
 module.exports = exports["default"];
 
-},{"../core/render-layer":55}]},{},[60])
+},{"../core/render-layer":55}]},{},[62])
 
 
 //# sourceMappingURL=snake.js.map
