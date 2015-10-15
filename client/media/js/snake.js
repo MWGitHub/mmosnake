@@ -1,6 +1,6 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports={
-  "host": "http://localhost:5000",
+  "host": "http://24.187.68.93:5000",
   "screenWidth": 21,
   "screenHeight": 15,
   "blockWidth": 16
@@ -23909,6 +23909,8 @@ var Core = (function () {
     function Core(window) {
         _classCallCheck(this, Core);
 
+        if (!window) throw new Error('No window given');
+
         /**
          * Step size to use for each update in milliseconds.
          * Set to 0 to have a variable step size.
@@ -24008,6 +24010,7 @@ var Core = (function () {
                 this._preLoopCallbacks[i](udt);
             }
 
+            // Update in steps until caught up
             while (this._lastUpdateTime <= now) {
                 this.update(udt);
                 this._timeElapsed += udt;
@@ -24022,7 +24025,10 @@ var Core = (function () {
             for (i = 0; i < this._postLoopCallbacks.length; i++) {
                 this._postLoopCallbacks[i](udt);
             }
-            this._requestAnimFrame.call(window, this._boundGameLoop);
+
+            if (this._isRunning) {
+                this._requestAnimFrame.call(this._window, this._boundGameLoop);
+            }
         }
 
         /**
@@ -24062,7 +24068,7 @@ var Core = (function () {
 
         /**
          * Add a render layer.
-         * @param {Layer} layer the layer to add.
+         * @param {RenderLayer} layer the layer to add.
          */
     }, {
         key: 'addRenderLayer',
@@ -24072,7 +24078,7 @@ var Core = (function () {
 
         /**
          * Remove a render layer.
-         * @param {Layer} layer the layer to remove.
+         * @param {RenderLayer} layer the layer to remove.
          */
     }, {
         key: 'removeRenderLayer',
