@@ -19,7 +19,7 @@ addons:
   code_climate:
     repo_token: 5aac1db02313be2bfda32ea3b951d21cfe281a6157ccf52ef9c8de11f02098cb
 
-script: cd $TEST_DIR && npm install && npm test
+script: cd $TEST_DIR && npm install && npm run test-travis
 
 after_script:
-  - codeclimate-test-reporter < server/lcov.info
+  - codeclimate-test-reporter < lcov.info

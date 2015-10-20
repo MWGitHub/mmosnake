@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha --recursive --compilers js:babel/register"
+    "test": "./node_modules/.bin/mocha --recursive --compilers js:babel/register",
+    "test-travis": "./node_modules/.bin/mocha --recursive --compilers js:babel/register"
   },
   "author": "",
   "license": "ISC",
