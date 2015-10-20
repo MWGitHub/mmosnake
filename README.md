@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/MWGitHub/mmosnake.svg?branch=master)](https://travis-ci.org/MWGitHub/mmosnake)
+[![Code Climate](https://codeclimate.com/github/MWGitHub/mmosnake/badges/gpa.svg)](https://codeclimate.com/github/MWGitHub/mmosnake)
+[![Test Coverage](https://codeclimate.com/github/MWGitHub/mmosnake/badges/coverage.svg)](https://codeclimate.com/github/MWGitHub/mmosnake/coverage)
 
 # mSnake
 
