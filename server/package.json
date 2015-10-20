@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node_modules/.bin/lab -c",
+    "test": "node_modules/.bin/lab -c -r lcov -o lcov.info",
     "dev": "node . | ./node_modules/.bin/bunyan -o short"
   },
   "author": "",

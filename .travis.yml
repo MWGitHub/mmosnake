@@ -16,5 +16,10 @@ addons:
     packages:
       - gcc-4.8
       - g++-4.8
+  code_climate:
+    repo_token: 5aac1db02313be2bfda32ea3b951d21cfe281a6157ccf52ef9c8de11f02098cb
 
 script: cd $TEST_DIR && npm install && npm test
+
+after_script:
+  - codeclimate-test-reporter < server/lcov.info

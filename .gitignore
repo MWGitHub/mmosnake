@@ -3,3 +3,4 @@
 *.iml
 npm-debug.log
 client/config.json
+lcov.info
