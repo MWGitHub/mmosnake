@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/MWGitHub/mmosnake.svg?branch=master)](https://travis-ci.org/MWGitHub/mmosnake)
+
 # mSnake
 
 A multiplayer snake server and client.
@@ -11,7 +13,7 @@ Rename `client/config-sample.json` to `client/config.json`.
 
 In the client directory run `http-server` to start the client server.
 In the server directory run `npm run dev` to start the host server.
-Navigate to `https://localhost:8080` and start playing.
+Navigate to `http://localhost:8080` and start playing.
 
 ## Contributing
 
