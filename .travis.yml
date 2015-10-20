@@ -3,9 +3,11 @@ node_js:
   - 4
 
 env:
-  - TEST_DIR=client
-  - TEST_DIR=server
-  - CXX=g++-4.8
+  global:
+    - CXX=g++-4.8
+  matrix:
+    - TEST_DIR=client
+    - TEST_DIR=server
 
 addons:
   apt:
@@ -15,10 +17,4 @@ addons:
       - gcc-4.8
       - g++-4.8
 
-before_script:
-  - cd server
-  - npm install
-  - cd ../client
-  - npm install
-
-script: cd $TEST_DIR && npm test
+script: cd $TEST_DIR && npm install && npm test
