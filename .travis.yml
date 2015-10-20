@@ -3,8 +3,17 @@ node_js:
   - 4
 
 env:
-  - TEST_DIR = client
-  - TEST_DIR = server
+  - TEST_DIR=client
+  - TEST_DIR=server
+  - CXX=g++-4.8
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
 
 before_script:
   - cd server
