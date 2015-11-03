@@ -1,5 +1,6 @@
 "use strict";
 import Core from './core/core';
+import Input from './core/input';
 import StateSwitcher from './core/state-switcher';
 import StartState from './game/start-state';
 import GameState from './game/game-state';
@@ -18,7 +19,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var core = new Core(window);
     core.updateStepSize = 1000 / 15;
     core.renderStepSize = 1000 / 15;
+    core.allowUpdateSkips = true;
+    core.allowRenderSkips = true;
 
+    // Intialize the input
+    var input = new Input(window, document.getElementById('game'));
+
+    // Initialize and add the renderer
     var layer = new RenderLayer(document.getElementById('game'));
     core.addRenderLayer(layer);
 
@@ -29,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
     var startState = new StartState(window, layer);
     stateSwitcher.addState(startState);
-    var gameState = new GameState(window, layer);
+    var gameState = new GameState(window, layer, input);
     stateSwitcher.addState(gameState);
     var endState = new EndState(window, layer);
     stateSwitcher.addState(endState);
@@ -40,6 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Start the main loop
     core.start();
+    core.addLoopCallback(CoreCallbacks.preUpdate, function(dt) {
+        input.update();
+    });
+    core.addLoopCallback(CoreCallbacks.postUpdate, function(dt) {
+        input.flush();
+    });
     core.addLoopCallback(CoreCallbacks.postLoop, function(dt) {
         elapsed.elapsed = core.timeElapsed;
     });

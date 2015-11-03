@@ -1,6 +1,11 @@
 "use strict";
 import _ from 'lodash';
 
+var isBrowser = true;
+if (process && process.argv.length !== 0) {
+    isBrowser = false;
+}
+
 var callbackTypes = {
     preUpdate: '_preUpdateCallbacks',
     update: '_updateCallbacks',
@@ -22,16 +27,28 @@ class Core {
 
         /**
          * Step size to use for each update in milliseconds.
-         * Set to 0 to have a variable step size.
+         * Set to 0 for a variable step size.
          * @type {number}
          */
         this.updateStepSize = 16;
         /**
          * Step size to use for each render in milliseconds.
-         * Set to 0 to have a variable step size.
+         * Set to 0 for a variable step size.
          * @type {number}
          */
         this.renderStepSize = 16;
+
+        /**
+         * Allows the update loop to skip updates when one takes longer than a frame.
+         * @type {boolean}
+         */
+        this.allowUpdateSkips = false;
+
+        /**
+         * Allows the render loop to skip renders when one takes longer than a frame.
+         * @type {boolean}
+         */
+        this.allowRenderSkips = false;
 
         this._window = window;
         this._renderLayers = [];
@@ -53,7 +70,7 @@ class Core {
             window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
             window.msRequestAnimationFrame ||
             function(callback) {
-                window.setTimeout(callback, 1000 / 120);
+                window.setTimeout(callback, 1000 / 60);
             }).bind(window);
 
         this._boundGameLoop = this._gameLoop.bind(this);
@@ -114,12 +131,21 @@ class Core {
         // Update in steps until caught up
         while (this._lastUpdateTime <= now) {
             this.update(udt);
-            this._timeElapsed += udt;
-            this._lastUpdateTime += udt;
+            if (this.allowUpdateSkips) {
+                this._timeElapsed += now - this._lastUpdateTime;
+                this._lastUpdateTime = now + 1;
+            } else {
+                this._timeElapsed += udt;
+                this._lastUpdateTime += udt;
+            }
         }
         while (this._lastRenderTime <= now) {
-            this.render(udt);
-            this._lastRenderTime += rdt;
+            this.render(rdt);
+            if (this.allowRenderSkips) {
+                this._lastRenderTime = now + 1;
+            } else {
+                this._lastRenderTime += rdt;
+            }
         }
 
         // Run the loop end callbacks.
@@ -128,7 +154,11 @@ class Core {
         }
 
         if (this._isRunning) {
-            this._requestAnimFrame.call(this._window, this._boundGameLoop);
+            if (isBrowser) {
+                this._requestAnimFrame.call(this._window, this._boundGameLoop);
+            } else {
+                setImmediate(this._boundGameLoop);
+            }
         }
     }
 

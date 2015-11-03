@@ -3,6 +3,7 @@ import CoreState from '../core/core-state';
 import io from 'socket.io-client';
 import Debug from '../debug/debug';
 import Config from '../../config.json';
+import Input from '../core/input';
 
 var gridKey = {
     empty: 0,
@@ -22,14 +23,16 @@ class GameState extends CoreState {
      * Creates the game state.
      * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to retrieve from.
      */
-    constructor(window, layer) {
+    constructor(window, layer, input) {
         super();
 
         this.type = 'GameState';
 
         this._window = window;
         this._layer = layer;
+        this._input = input;
         this._socket = null;
 
         this._container = null;
@@ -40,7 +43,8 @@ class GameState extends CoreState {
             isAlive: false,
             length: 0,
             segments: [],
-            players: 0
+            players: 0,
+            delay: 150
         };
 
         this._grid = [];
@@ -51,9 +55,6 @@ class GameState extends CoreState {
 
         this._blocks = [];
         this._blockWidth = Config.blockWidth;
-
-        this._keyDown = this._onKeyDown.bind(this);
-        this._previousKeyDown = null;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -71,31 +72,31 @@ class GameState extends CoreState {
         this._foodTexture.render(graphics);
     }
 
+    /**
+     * Calls a function after a set amount of time.
+     * @param  {Function} fn the function to call after a certain amount of time.
+     */
+    _delay(fn) {
+        window.setTimeout(fn, this._debug.delay);
+    };
+
     onAdd() {
         Debug.Globals.instance.addControl(this._debug, 'index', {listen: true});
         Debug.Globals.instance.addControl(this._debug, 'direction', {listen: true});
         Debug.Globals.instance.addControl(this._debug, 'isAlive', {listen: true});
         Debug.Globals.instance.addControl(this._debug, 'length', {listen: true});
         Debug.Globals.instance.addControl(this._debug, 'players', {listen: true});
-    }
+        Debug.Globals.instance.addControl(this._debug, 'delay', {listen: true});
 
-    _onKeyDown(e) {
-        if (!this._socket) return;
-        var key = e.key || e.keyIdentifier || e.keyCode;
-        switch (key) {
-            case 'Up':
-                this._socket.emit('direct', {direction: cardinal.N});
-                break;
-            case 'Right':
-                this._socket.emit('direct', {direction: cardinal.E});
-                break;
-            case 'Down':
-                this._socket.emit('direct', {direction: cardinal.S});
-                break;
-            case 'Left':
-                this._socket.emit('direct', {direction: cardinal.W});
-                break;
-        }
+        // Bind keys to hotkeys
+        this._input.addHotkey(Input.CharToKeyCode('W'), 'move-up');
+        this._input.addHotkey(Input.CharCodes.Up, 'move-up');
+        this._input.addHotkey(Input.CharToKeyCode('D'), 'move-right');
+        this._input.addHotkey(Input.CharCodes.Right, 'move-right');
+        this._input.addHotkey(Input.CharToKeyCode('S'), 'move-down');
+        this._input.addHotkey(Input.CharCodes.Down, 'move-down');
+        this._input.addHotkey(Input.CharToKeyCode('A'), 'move-left');
+        this._input.addHotkey(Input.CharCodes.Left, 'move-left');
     }
 
     onEnter() {
@@ -103,6 +104,7 @@ class GameState extends CoreState {
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
 
+        // Connect to the server
         this._socket = io.connect(Config.host, {
             'force new connection': true
         });
@@ -116,42 +118,70 @@ class GameState extends CoreState {
             });
 
             this._socket.on('start', (data) => {
-                var snake = data.snake;
-                this._grid = data.grid;
-                this._width = data.width;
-                this._debug.index = snake.index;
-                this._debug.isAlive = snake.isAlive;
-                this._debug.direction = snake.direction;
-                this._debug.length = snake.segments.length;
-                this._debug.segments = snake.segments;
+                this._delay(() => {
+                    console.log('start');
+                    var snake = data.snake;
+                    this._grid = data.grid;
+                    this._width = data.width;
+                    this._debug.index = snake.index;
+                    this._debug.isAlive = snake.isAlive;
+                    this._debug.direction = snake.direction;
+                    this._debug.length = snake.segments.length;
+                    this._debug.segments = snake.segments;
+                });
             });
 
             this._socket.on('die', (data) => {
-                console.log('dead');
-                this._debug.isAlive = false;
-                this.switcher.switchState(this, this.switcher.retrieveState('EndState'), null, {
-                    score: data.score
+                this._delay(() => {
+                    console.log('dead');
+                    this._debug.isAlive = false;
+                    this.switcher.switchState(this, this.switcher.retrieveState('EndState'), null, {
+                        score: data.score
+                    });
                 });
             });
 
             this._socket.on('update', (data) => {
-                var snake = data.snake;
-                this._grid = data.grid;
-                this._debug.players = data.players;
-                this._debug.index = snake.index;
-                this._debug.isAlive = snake.isAlive;
-                this._debug.direction = snake.direction;
-                this._debug.length = snake.segments.length;
-                this._debug.segments = snake.segments;
+                this._delay(() => {
+                    var snake = data.snake;
+                    this._grid = data.grid;
+                    this._debug.players = data.players;
+                    this._debug.index = snake.index;
+                    this._debug.isAlive = snake.isAlive;
+                    this._debug.direction = snake.direction;
+                    this._debug.length = snake.segments.length;
+                    this._debug.segments = snake.segments;
+                });
             });
-
-            this._window.addEventListener('keydown', this._keyDown);
-
             console.log('Connected!');
         });
     }
 
+    _checkKeys() {
+        if (!this._socket) return;
+
+        var direction;
+        if (this._input.keysJustDown['move-up']) {
+            direction = cardinal.N;
+        }
+        if (this._input.keysJustDown['move-right']) {
+            direction = cardinal.E;
+        }
+        if (this._input.keysJustDown['move-down']) {
+            direction = cardinal.S;
+        }
+        if (this._input.keysJustDown['move-left']) {
+            direction = cardinal.W;
+        }
+        if (direction) {
+            this._delay(() => {
+                this._socket.emit('direct', {direction: direction});
+            });
+        }
+    }
+
     update(dt) {
+        this._checkKeys();
     }
 
     preRender() {

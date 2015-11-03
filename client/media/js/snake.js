@@ -1,6 +1,6 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports={
-  "host": "http://24.187.68.93:5000",
+  "host": "http://localhost:5000",
   "screenWidth": 21,
   "screenHeight": 15,
   "blockWidth": 16
@@ -4936,9 +4936,148 @@ dat.dom.dom,
 dat.utils.common);
 },{}],13:[function(require,module,exports){
 
+/**
+ * Expose `debug()` as the module.
+ */
+
+module.exports = debug;
+
+/**
+ * Create a debugger with the given `name`.
+ *
+ * @param {String} name
+ * @return {Type}
+ * @api public
+ */
+
+function debug(name) {
+  if (!debug.enabled(name)) return function(){};
+
+  return function(fmt){
+    fmt = coerce(fmt);
+
+    var curr = new Date;
+    var ms = curr - (debug[name] || curr);
+    debug[name] = curr;
+
+    fmt = name
+      + ' '
+      + fmt
+      + ' +' + debug.humanize(ms);
+
+    // This hackery is required for IE8
+    // where `console.log` doesn't have 'apply'
+    window.console
+      && console.log
+      && Function.prototype.apply.call(console.log, console, arguments);
+  }
+}
+
+/**
+ * The currently active debug mode names.
+ */
+
+debug.names = [];
+debug.skips = [];
+
+/**
+ * Enables a debug mode by name. This can include modes
+ * separated by a colon and wildcards.
+ *
+ * @param {String} name
+ * @api public
+ */
+
+debug.enable = function(name) {
+  try {
+    localStorage.debug = name;
+  } catch(e){}
+
+  var split = (name || '').split(/[\s,]+/)
+    , len = split.length;
+
+  for (var i = 0; i < len; i++) {
+    name = split[i].replace('*', '.*?');
+    if (name[0] === '-') {
+      debug.skips.push(new RegExp('^' + name.substr(1) + '$'));
+    }
+    else {
+      debug.names.push(new RegExp('^' + name + '$'));
+    }
+  }
+};
+
+/**
+ * Disable debug output.
+ *
+ * @api public
+ */
+
+debug.disable = function(){
+  debug.enable('');
+};
+
+/**
+ * Humanize the given `ms`.
+ *
+ * @param {Number} m
+ * @return {String}
+ * @api private
+ */
+
+debug.humanize = function(ms) {
+  var sec = 1000
+    , min = 60 * 1000
+    , hour = 60 * min;
+
+  if (ms >= hour) return (ms / hour).toFixed(1) + 'h';
+  if (ms >= min) return (ms / min).toFixed(1) + 'm';
+  if (ms >= sec) return (ms / sec | 0) + 's';
+  return ms + 'ms';
+};
+
+/**
+ * Returns true if the given mode name is enabled, false otherwise.
+ *
+ * @param {String} name
+ * @return {Boolean}
+ * @api public
+ */
+
+debug.enabled = function(name) {
+  for (var i = 0, len = debug.skips.length; i < len; i++) {
+    if (debug.skips[i].test(name)) {
+      return false;
+    }
+  }
+  for (var i = 0, len = debug.names.length; i < len; i++) {
+    if (debug.names[i].test(name)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Coerce `val`.
+ */
+
+function coerce(val) {
+  if (val instanceof Error) return val.stack || val.message;
+  return val;
+}
+
+// persist
+
+try {
+  if (window.localStorage) debug.enable(localStorage.debug);
+} catch(e){}
+
+},{}],14:[function(require,module,exports){
+
 module.exports =  require('./lib/');
 
-},{"./lib/":14}],14:[function(require,module,exports){
+},{"./lib/":15}],15:[function(require,module,exports){
 
 module.exports = require('./socket');
 
@@ -4950,7 +5089,7 @@ module.exports = require('./socket');
  */
 module.exports.parser = require('engine.io-parser');
 
-},{"./socket":15,"engine.io-parser":27}],15:[function(require,module,exports){
+},{"./socket":16,"engine.io-parser":27}],16:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies.
@@ -5660,7 +5799,7 @@ Socket.prototype.filterUpgrades = function (upgrades) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./transport":16,"./transports":17,"component-emitter":8,"debug":23,"engine.io-parser":27,"indexof":32,"parsejson":37,"parseqs":38,"parseuri":26}],16:[function(require,module,exports){
+},{"./transport":17,"./transports":18,"component-emitter":8,"debug":24,"engine.io-parser":27,"indexof":32,"parsejson":38,"parseqs":39,"parseuri":26}],17:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -5821,7 +5960,7 @@ Transport.prototype.onClose = function () {
   this.emit('close');
 };
 
-},{"component-emitter":8,"engine.io-parser":27}],17:[function(require,module,exports){
+},{"component-emitter":8,"engine.io-parser":27}],18:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies
@@ -5879,7 +6018,7 @@ function polling(opts){
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./polling-jsonp":18,"./polling-xhr":19,"./websocket":21,"xmlhttprequest":22}],18:[function(require,module,exports){
+},{"./polling-jsonp":19,"./polling-xhr":20,"./websocket":22,"xmlhttprequest":23}],19:[function(require,module,exports){
 (function (global){
 
 /**
@@ -6117,7 +6256,7 @@ JSONPPolling.prototype.doWrite = function (data, fn) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./polling":20,"component-inherit":9}],19:[function(require,module,exports){
+},{"./polling":21,"component-inherit":9}],20:[function(require,module,exports){
 (function (global){
 /**
  * Module requirements.
@@ -6506,7 +6645,7 @@ function unloadHandler() {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./polling":20,"component-emitter":8,"component-inherit":9,"debug":23,"xmlhttprequest":22}],20:[function(require,module,exports){
+},{"./polling":21,"component-emitter":8,"component-inherit":9,"debug":24,"xmlhttprequest":23}],21:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -6753,7 +6892,7 @@ Polling.prototype.uri = function(){
   return schema + '://' + this.hostname + port + this.path + query;
 };
 
-},{"../transport":16,"component-inherit":9,"debug":23,"engine.io-parser":27,"parseqs":38,"xmlhttprequest":22}],21:[function(require,module,exports){
+},{"../transport":17,"component-inherit":9,"debug":24,"engine.io-parser":27,"parseqs":39,"xmlhttprequest":23}],22:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -6993,7 +7132,7 @@ WS.prototype.check = function(){
   return !!WebSocket && !('__initialize' in WebSocket && this.name === WS.prototype.name);
 };
 
-},{"../transport":16,"component-inherit":9,"debug":23,"engine.io-parser":27,"parseqs":38,"ws":53}],22:[function(require,module,exports){
+},{"../transport":17,"component-inherit":9,"debug":24,"engine.io-parser":27,"parseqs":39,"ws":53}],23:[function(require,module,exports){
 // browser shim for xmlhttprequest module
 var hasCORS = require('has-cors');
 
@@ -7031,7 +7170,7 @@ module.exports = function(opts) {
   }
 }
 
-},{"has-cors":31}],23:[function(require,module,exports){
+},{"has-cors":31}],24:[function(require,module,exports){
 
 /**
  * This is the web browser implementation of `debug()`.
@@ -7180,7 +7319,7 @@ function load() {
 
 exports.enable(load());
 
-},{"./debug":24}],24:[function(require,module,exports){
+},{"./debug":25}],25:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -7379,120 +7518,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":25}],25:[function(require,module,exports){
-/**
- * Helpers.
- */
-
-var s = 1000;
-var m = s * 60;
-var h = m * 60;
-var d = h * 24;
-var y = d * 365.25;
-
-/**
- * Parse or format the given `val`.
- *
- * Options:
- *
- *  - `long` verbose formatting [false]
- *
- * @param {String|Number} val
- * @param {Object} options
- * @return {String|Number}
- * @api public
- */
-
-module.exports = function(val, options){
-  options = options || {};
-  if ('string' == typeof val) return parse(val);
-  return options.long
-    ? long(val)
-    : short(val);
-};
-
-/**
- * Parse the given `str` and return milliseconds.
- *
- * @param {String} str
- * @return {Number}
- * @api private
- */
-
-function parse(str) {
-  var match = /^((?:\d+)?\.?\d+) *(ms|seconds?|s|minutes?|m|hours?|h|days?|d|years?|y)?$/i.exec(str);
-  if (!match) return;
-  var n = parseFloat(match[1]);
-  var type = (match[2] || 'ms').toLowerCase();
-  switch (type) {
-    case 'years':
-    case 'year':
-    case 'y':
-      return n * y;
-    case 'days':
-    case 'day':
-    case 'd':
-      return n * d;
-    case 'hours':
-    case 'hour':
-    case 'h':
-      return n * h;
-    case 'minutes':
-    case 'minute':
-    case 'm':
-      return n * m;
-    case 'seconds':
-    case 'second':
-    case 's':
-      return n * s;
-    case 'ms':
-      return n;
-  }
-}
-
-/**
- * Short format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function short(ms) {
-  if (ms >= d) return Math.round(ms / d) + 'd';
-  if (ms >= h) return Math.round(ms / h) + 'h';
-  if (ms >= m) return Math.round(ms / m) + 'm';
-  if (ms >= s) return Math.round(ms / s) + 's';
-  return ms + 'ms';
-}
-
-/**
- * Long format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function long(ms) {
-  return plural(ms, d, 'day')
-    || plural(ms, h, 'hour')
-    || plural(ms, m, 'minute')
-    || plural(ms, s, 'second')
-    || ms + ' ms';
-}
-
-/**
- * Pluralization helper.
- */
-
-function plural(ms, n, name) {
-  if (ms < n) return;
-  if (ms < n * 1.5) return Math.floor(ms / n) + ' ' + name;
-  return Math.ceil(ms / n) + ' ' + name + 's';
-}
-
-},{}],26:[function(require,module,exports){
+},{"ms":36}],26:[function(require,module,exports){
 /**
  * Parses an URI
  *
@@ -21487,6 +21513,119 @@ module.exports = Array.isArray || function (arr) {
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
 },{}],36:[function(require,module,exports){
+/**
+ * Helpers.
+ */
+
+var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var y = d * 365.25;
+
+/**
+ * Parse or format the given `val`.
+ *
+ * Options:
+ *
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} options
+ * @return {String|Number}
+ * @api public
+ */
+
+module.exports = function(val, options){
+  options = options || {};
+  if ('string' == typeof val) return parse(val);
+  return options.long
+    ? long(val)
+    : short(val);
+};
+
+/**
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */
+
+function parse(str) {
+  var match = /^((?:\d+)?\.?\d+) *(ms|seconds?|s|minutes?|m|hours?|h|days?|d|years?|y)?$/i.exec(str);
+  if (!match) return;
+  var n = parseFloat(match[1]);
+  var type = (match[2] || 'ms').toLowerCase();
+  switch (type) {
+    case 'years':
+    case 'year':
+    case 'y':
+      return n * y;
+    case 'days':
+    case 'day':
+    case 'd':
+      return n * d;
+    case 'hours':
+    case 'hour':
+    case 'h':
+      return n * h;
+    case 'minutes':
+    case 'minute':
+    case 'm':
+      return n * m;
+    case 'seconds':
+    case 'second':
+    case 's':
+      return n * s;
+    case 'ms':
+      return n;
+  }
+}
+
+/**
+ * Short format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function short(ms) {
+  if (ms >= d) return Math.round(ms / d) + 'd';
+  if (ms >= h) return Math.round(ms / h) + 'h';
+  if (ms >= m) return Math.round(ms / m) + 'm';
+  if (ms >= s) return Math.round(ms / s) + 's';
+  return ms + 'ms';
+}
+
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function long(ms) {
+  return plural(ms, d, 'day')
+    || plural(ms, h, 'hour')
+    || plural(ms, m, 'minute')
+    || plural(ms, s, 'second')
+    || ms + ' ms';
+}
+
+/**
+ * Pluralization helper.
+ */
+
+function plural(ms, n, name) {
+  if (ms < n) return;
+  if (ms < n * 1.5) return Math.floor(ms / n) + ' ' + name;
+  return Math.ceil(ms / n) + ' ' + name + 's';
+}
+
+},{}],37:[function(require,module,exports){
 
 /**
  * HOP ref.
@@ -21571,7 +21710,7 @@ exports.length = function(obj){
 exports.isEmpty = function(obj){
   return 0 == exports.length(obj);
 };
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 (function (global){
 /**
  * JSON parse.
@@ -21607,7 +21746,7 @@ module.exports = function parsejson(data) {
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 /**
  * Compiles a querystring
  * Returns string representation of the object
@@ -21646,7 +21785,7 @@ exports.decode = function(qs){
   return qry;
 };
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 /**
  * Parses an URI
  *
@@ -21673,11 +21812,104 @@ module.exports = function parseuri(str) {
   return uri;
 };
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
+// shim for using process in browser
+
+var process = module.exports = {};
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = setTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    clearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        setTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],42:[function(require,module,exports){
 
 module.exports = require('./lib/');
 
-},{"./lib/":41}],41:[function(require,module,exports){
+},{"./lib/":43}],43:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -21766,7 +21998,7 @@ exports.connect = lookup;
 exports.Manager = require('./manager');
 exports.Socket = require('./socket');
 
-},{"./manager":42,"./socket":44,"./url":45,"debug":46,"socket.io-parser":48}],42:[function(require,module,exports){
+},{"./manager":44,"./socket":46,"./url":47,"debug":13,"socket.io-parser":49}],44:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -22271,7 +22503,7 @@ Manager.prototype.onreconnect = function(){
   this.emitAll('reconnect', attempt);
 };
 
-},{"./on":43,"./socket":44,"./url":45,"backo2":4,"component-bind":7,"component-emitter":8,"debug":46,"engine.io-client":13,"indexof":32,"object-component":36,"socket.io-parser":48}],43:[function(require,module,exports){
+},{"./on":45,"./socket":46,"./url":47,"backo2":4,"component-bind":7,"component-emitter":8,"debug":13,"engine.io-client":14,"indexof":32,"object-component":37,"socket.io-parser":49}],45:[function(require,module,exports){
 
 /**
  * Module exports.
@@ -22297,7 +22529,7 @@ function on(obj, ev, fn) {
   };
 }
 
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -22684,7 +22916,7 @@ Socket.prototype.disconnect = function(){
   return this;
 };
 
-},{"./on":43,"component-bind":7,"component-emitter":8,"debug":46,"has-binary":30,"socket.io-parser":48,"to-array":51}],45:[function(require,module,exports){
+},{"./on":45,"component-bind":7,"component-emitter":8,"debug":13,"has-binary":30,"socket.io-parser":49,"to-array":51}],47:[function(require,module,exports){
 (function (global){
 
 /**
@@ -22762,146 +22994,7 @@ function url(uri, loc){
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"debug":46,"parseuri":39}],46:[function(require,module,exports){
-
-/**
- * Expose `debug()` as the module.
- */
-
-module.exports = debug;
-
-/**
- * Create a debugger with the given `name`.
- *
- * @param {String} name
- * @return {Type}
- * @api public
- */
-
-function debug(name) {
-  if (!debug.enabled(name)) return function(){};
-
-  return function(fmt){
-    fmt = coerce(fmt);
-
-    var curr = new Date;
-    var ms = curr - (debug[name] || curr);
-    debug[name] = curr;
-
-    fmt = name
-      + ' '
-      + fmt
-      + ' +' + debug.humanize(ms);
-
-    // This hackery is required for IE8
-    // where `console.log` doesn't have 'apply'
-    window.console
-      && console.log
-      && Function.prototype.apply.call(console.log, console, arguments);
-  }
-}
-
-/**
- * The currently active debug mode names.
- */
-
-debug.names = [];
-debug.skips = [];
-
-/**
- * Enables a debug mode by name. This can include modes
- * separated by a colon and wildcards.
- *
- * @param {String} name
- * @api public
- */
-
-debug.enable = function(name) {
-  try {
-    localStorage.debug = name;
-  } catch(e){}
-
-  var split = (name || '').split(/[\s,]+/)
-    , len = split.length;
-
-  for (var i = 0; i < len; i++) {
-    name = split[i].replace('*', '.*?');
-    if (name[0] === '-') {
-      debug.skips.push(new RegExp('^' + name.substr(1) + '$'));
-    }
-    else {
-      debug.names.push(new RegExp('^' + name + '$'));
-    }
-  }
-};
-
-/**
- * Disable debug output.
- *
- * @api public
- */
-
-debug.disable = function(){
-  debug.enable('');
-};
-
-/**
- * Humanize the given `ms`.
- *
- * @param {Number} m
- * @return {String}
- * @api private
- */
-
-debug.humanize = function(ms) {
-  var sec = 1000
-    , min = 60 * 1000
-    , hour = 60 * min;
-
-  if (ms >= hour) return (ms / hour).toFixed(1) + 'h';
-  if (ms >= min) return (ms / min).toFixed(1) + 'm';
-  if (ms >= sec) return (ms / sec | 0) + 's';
-  return ms + 'ms';
-};
-
-/**
- * Returns true if the given mode name is enabled, false otherwise.
- *
- * @param {String} name
- * @return {Boolean}
- * @api public
- */
-
-debug.enabled = function(name) {
-  for (var i = 0, len = debug.skips.length; i < len; i++) {
-    if (debug.skips[i].test(name)) {
-      return false;
-    }
-  }
-  for (var i = 0, len = debug.names.length; i < len; i++) {
-    if (debug.names[i].test(name)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
- * Coerce `val`.
- */
-
-function coerce(val) {
-  if (val instanceof Error) return val.stack || val.message;
-  return val;
-}
-
-// persist
-
-try {
-  if (window.localStorage) debug.enable(localStorage.debug);
-} catch(e){}
-
-},{}],47:[function(require,module,exports){
+},{"debug":13,"parseuri":40}],48:[function(require,module,exports){
 (function (global){
 /*global Blob,File*/
 
@@ -23047,7 +23140,7 @@ exports.removeBlobs = function(data, callback) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./is-buffer":49,"isarray":33}],48:[function(require,module,exports){
+},{"./is-buffer":50,"isarray":33}],49:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -23449,7 +23542,7 @@ function error(data){
   };
 }
 
-},{"./binary":47,"./is-buffer":49,"component-emitter":8,"debug":50,"isarray":33,"json3":34}],49:[function(require,module,exports){
+},{"./binary":48,"./is-buffer":50,"component-emitter":8,"debug":13,"isarray":33,"json3":34}],50:[function(require,module,exports){
 (function (global){
 
 module.exports = isBuf;
@@ -23467,9 +23560,7 @@ function isBuf(obj) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{}],50:[function(require,module,exports){
-arguments[4][46][0].apply(exports,arguments)
-},{"dup":46}],51:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 module.exports = toArray
 
 function toArray(list, index) {
@@ -23874,6 +23965,7 @@ exports["default"] = CoreState;
 module.exports = exports["default"];
 
 },{}],55:[function(require,module,exports){
+(function (process){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -23888,6 +23980,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 var _lodash = require('lodash');
 
 var _lodash2 = _interopRequireDefault(_lodash);
+
+var isBrowser = true;
+if (process && process.argv.length !== 0) {
+    isBrowser = false;
+}
 
 var callbackTypes = {
     preUpdate: '_preUpdateCallbacks',
@@ -23913,16 +24010,28 @@ var Core = (function () {
 
         /**
          * Step size to use for each update in milliseconds.
-         * Set to 0 to have a variable step size.
+         * Set to 0 for a variable step size.
          * @type {number}
          */
         this.updateStepSize = 16;
         /**
          * Step size to use for each render in milliseconds.
-         * Set to 0 to have a variable step size.
+         * Set to 0 for a variable step size.
          * @type {number}
          */
         this.renderStepSize = 16;
+
+        /**
+         * Allows the update loop to skip updates when one takes longer than a frame.
+         * @type {boolean}
+         */
+        this.allowUpdateSkips = false;
+
+        /**
+         * Allows the render loop to skip renders when one takes longer than a frame.
+         * @type {boolean}
+         */
+        this.allowRenderSkips = false;
 
         this._window = window;
         this._renderLayers = [];
@@ -23941,7 +24050,7 @@ var Core = (function () {
 
         // Cross platform request animation frame
         this._requestAnimFrame = (window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function (callback) {
-            window.setTimeout(callback, 1000 / 120);
+            window.setTimeout(callback, 1000 / 60);
         }).bind(window);
 
         this._boundGameLoop = this._gameLoop.bind(this);
@@ -24013,12 +24122,21 @@ var Core = (function () {
             // Update in steps until caught up
             while (this._lastUpdateTime <= now) {
                 this.update(udt);
-                this._timeElapsed += udt;
-                this._lastUpdateTime += udt;
+                if (this.allowUpdateSkips) {
+                    this._timeElapsed += now - this._lastUpdateTime;
+                    this._lastUpdateTime = now + 1;
+                } else {
+                    this._timeElapsed += udt;
+                    this._lastUpdateTime += udt;
+                }
             }
             while (this._lastRenderTime <= now) {
-                this.render(udt);
-                this._lastRenderTime += rdt;
+                this.render(rdt);
+                if (this.allowRenderSkips) {
+                    this._lastRenderTime = now + 1;
+                } else {
+                    this._lastRenderTime += rdt;
+                }
             }
 
             // Run the loop end callbacks.
@@ -24027,7 +24145,11 @@ var Core = (function () {
             }
 
             if (this._isRunning) {
-                this._requestAnimFrame.call(this._window, this._boundGameLoop);
+                if (isBrowser) {
+                    this._requestAnimFrame.call(this._window, this._boundGameLoop);
+                } else {
+                    setImmediate(this._boundGameLoop);
+                }
             }
         }
 
@@ -24144,7 +24266,629 @@ Core.Callbacks = callbackTypes;
 exports['default'] = Core;
 module.exports = exports['default'];
 
-},{"lodash":35}],56:[function(require,module,exports){
+}).call(this,require('_process'))
+
+},{"_process":41,"lodash":35}],56:[function(require,module,exports){
+(function (process){
+'use strict';
+
+var isBrowser = true;
+if (process && process.argv.length !== 0) {
+    isBrowser = false;
+}
+
+/**
+ * Handles keyboard, mouse, and game pad inputs.
+ * @param {HTMLElement} window the window to use.
+ * @param {HTMLElement=} element the element to retrieve input events from.
+ * @constructor
+ */
+function Input(window, element) {
+    "use strict";
+
+    /**
+     * Window to use for navigator support.
+     * @type {HTMLElement=}
+     */
+    this.window = window;
+
+    /**
+     * Document to get the mouse position from.
+     * @type {HTMLElement}
+     */
+    this.document = element;
+
+    /**
+     * Navigator used for gamepads.
+     * @type {*}
+     */
+    this.navigator = window.navigator;
+
+    /**
+     * Element that is being focused by the mouse.
+     * @type {HTMLElement}
+     */
+    this.focusElement = null;
+
+    /**
+     * Mouse offsets for finding the relative position.
+     * @type {number}
+     */
+    this.offsetX = 0.0;
+    this.offsetY = 0.0;
+
+    /**
+     * Width and height of the element to retrieve inputs from.
+     * @type {number}
+     */
+    this.width = element ? element.offsetWidth : 0;
+    this.height = element ? element.offsetHeight : 0;
+
+    /**
+     * True when the mouse is just clicked.
+     * @type {{left: boolean, middle: boolean, right: boolean}}
+     */
+    this.isMouseClicked = {
+        left: false,
+        middle: false,
+        right: false
+    };
+
+    /**
+     * True when the mouse is just released.
+     * @type {{left: boolean, middle: boolean, right: boolean}}
+     */
+    this.isMouseReleased = {
+        left: false,
+        middle: false,
+        right: false
+    };
+
+    /**
+     * True when the mouse is being held down.
+     * @type {{left: boolean, middle: boolean, right: boolean}}
+     */
+    this.isMouseDown = {
+        left: false,
+        middle: false,
+        right: false
+    };
+
+    /**
+     * Position of the mouse relative to the center of the canvas.
+     * Left ie negative X and right is positive X.
+     * Up is positive Y and down is negative Y.
+     * Ranges from -1 to 1.
+     * @type {number}
+     */
+    this.mouseX = 0;
+    this.mouseY = 0;
+
+    /**
+     * True if a key is down.
+     * @dict
+     */
+    this.keysDown = {};
+
+    /**
+     * True if a key is up for the current frame.
+     * @dict
+     */
+    this.keysUp = {};
+
+    /**
+     * True if a key is pressed for the current frame.
+     * @dict
+     */
+    this.keysJustDown = {};
+
+    /**
+     * Hotkeys are keys that map to one or more hotkeys.
+     * Hotkeys names are added to the keysDown and keysUp input.
+     * @dict
+     */
+    this.hotkeys = {};
+
+    /**
+     * True to enable game pad support.
+     * @type {boolean}
+     */
+    this.enableGamePads = true;
+
+    /**
+     * Dead zone for game pads.
+     * @type {number}
+     */
+    this.deadZone = 0.25;
+
+    /**
+     * Connected game pads.
+     * @type {Array.<Gamepad>}
+     */
+    this.gamepads = [];
+
+    /**
+     * Buttons for the gamepad in the previous frame.
+     * @type {Array.<GamepadButton>}
+     */
+    this.gamepadsButtonsPrevious = [];
+
+    /**
+     * Check if game pad support is available.
+     * @type {Boolean}
+     */
+    this.gamepadSupportAvailable = this.navigator.getGamepads || !!this.navigator.webkitGetGamepads || !!this.navigator.webkitGamepads;
+
+    /**
+     * True to force all gamepads to use a single pad code.
+     * @type {boolean}
+     */
+    this.forceSingleGamepad = true;
+
+    /********************************************
+     * Initialize the inputs.
+     *******************************************/
+    // Don't listen to events if no element is given.
+    if (!element) return;
+
+    // Calculate the offsets.
+    var obj = element;
+    if (obj.offsetParent) {
+        do {
+            this.offsetX += obj.offsetLeft;
+            this.offsetY += obj.offsetTop;
+        } while (obj = obj.offsetParent);
+    }
+
+    // Disable default behavior.
+    this.disableDefaults(element);
+
+    // Keep track of the focused element.
+    element.ownerDocument.addEventListener('mousedown', (function (event) {
+        this.focusElement = event.target;
+    }).bind(this), false);
+
+    // Add the events.
+    element.addEventListener('mousedown', this.onMouseDown.bind(this), false);
+    element.addEventListener('mouseup', this.onMouseUp.bind(this), false);
+    element.addEventListener('mousemove', this.onMouseMove.bind(this), false);
+
+    // Set up the keycode.
+    element.ownerDocument.addEventListener('keydown', this.onKeyDown.bind(this));
+    element.ownerDocument.addEventListener('keyup', this.onKeyUp.bind(this));
+}
+
+/**
+ * Updates the input.
+ * @param {number} dt the time between frames.
+ */
+Input.prototype.update = function (dt) {
+    "use strict";
+
+    // Update the gamepads.
+    if (this.gamepadSupportAvailable && this.enableGamePads) {
+        this.updateGamePads();
+    }
+};
+
+/**
+ * Runs when the mouse is down.
+ * @param {MouseEvent} event the mouse event.
+ */
+Input.prototype.onMouseDown = function (event) {
+    "use strict";
+
+    var code = null;
+    switch (event.button) {
+        case Input.MouseButtons.Left:
+            this.isMouseClicked.left = true;
+            this.isMouseDown.left = true;
+            code = Input.MouseCodes.Left;
+            break;
+        case Input.MouseButtons.Middle:
+            this.isMouseClicked.middle = true;
+            this.isMouseDown.middle = true;
+            code = Input.MouseCodes.Middle;
+            break;
+        case Input.MouseButtons.Right:
+            this.isMouseClicked.right = true;
+            this.isMouseDown.right = true;
+            code = Input.MouseCodes.Right;
+            break;
+    }
+    if (code) {
+        this.keysDown[code] = true;
+        this.keysJustDown[code] = true;
+
+        // Update every hotkey.
+        if (this.hotkeys[code]) {
+            for (var i = 0; i < this.hotkeys[code].length; i++) {
+                this.keysDown[this.hotkeys[code][i]] = true;
+                this.keysJustDown[this.hotkeys[code][i]] = this.keysJustDown[code];
+            }
+        }
+    }
+};
+
+/**
+ * Runs when the mouse is released.
+ * @param {MouseEvent} event the mouse event.
+ */
+Input.prototype.onMouseUp = function (event) {
+    "use strict";
+
+    var code = null;
+    switch (event.button) {
+        case Input.MouseButtons.Left:
+            this.isMouseDown.left = false;
+            this.isMouseReleased.left = true;
+            code = Input.MouseCodes.Left;
+            break;
+        case Input.MouseButtons.Middle:
+            this.isMouseDown.middle = false;
+            this.isMouseReleased.middle = true;
+            code = Input.MouseCodes.Middle;
+            break;
+        case Input.MouseButtons.Right:
+            this.isMouseDown.right = false;
+            this.isMouseReleased.middle = true;
+            code = Input.MouseCodes.Right;
+            break;
+    }
+    if (code) {
+        this.keysDown[code] = false;
+        this.keysUp[code] = true;
+
+        // Update every hotkey.
+        if (this.hotkeys[code]) {
+            for (var i = 0; i < this.hotkeys[code].length; i++) {
+                this.keysDown[this.hotkeys[code][i]] = false;
+                this.keysUp[this.hotkeys[code][i]] = true;
+            }
+        }
+    }
+};
+
+/**
+ * Runs when the mouse has moved.
+ * @param {MouseEvent} event the mouse event.
+ */
+Input.prototype.onMouseMove = function (event) {
+    "use strict";
+
+    this.mouseX = (event.pageX - this.offsetX - this.width / 2) / (this.width / 2);
+    this.mouseY = -(event.pageY - this.offsetY - this.height / 2) / (this.height / 2);
+};
+
+Input.prototype.onKeyDown = function (event) {
+    "use strict";
+
+    var charCode = event.keyCode;
+    // Only add to just down if it isn't down already.
+    if (!this.keysDown[charCode]) {
+        this.keysJustDown[charCode] = true;
+    }
+    this.keysDown[charCode] = true;
+
+    // Update every hotkey.
+    if (this.hotkeys[charCode]) {
+        for (var i = 0; i < this.hotkeys[charCode].length; i++) {
+            this.keysDown[this.hotkeys[charCode][i]] = true;
+            this.keysJustDown[this.hotkeys[charCode][i]] = this.keysJustDown[charCode];
+        }
+    }
+
+    return false;
+};
+
+Input.prototype.onKeyUp = function (event) {
+    "use strict";
+
+    var charCode = event.keyCode;
+    this.keysDown[charCode] = false;
+    this.keysUp[charCode] = true;
+
+    // Update every hotkey.
+    if (this.hotkeys[charCode]) {
+        for (var i = 0; i < this.hotkeys[charCode].length; i++) {
+            this.keysDown[this.hotkeys[charCode][i]] = false;
+            this.keysUp[this.hotkeys[charCode][i]] = true;
+        }
+    }
+};
+
+/**
+ * Updates the gamepads.
+ */
+Input.prototype.updateGamePads = function () {
+    "use strict";
+
+    if (!this.gamepadSupportAvailable || !this.enableGamePads) return;
+
+    // Retrieve all available pads.
+    var rawGamepads = navigator.getGamepads && navigator.getGamepads() || navigator.webkitGetGamepads && navigator.webkitGetGamepads();
+
+    var i;
+    if (rawGamepads) {
+        this.gamepads = [];
+        for (i = 0; i < rawGamepads.length; i++) {
+            if (rawGamepads[i]) {
+                this.gamepads.push(rawGamepads[i]);
+            }
+        }
+    }
+
+    // Set buttons down and up for the pad.
+    var k, j;
+    for (i = 0; i < this.gamepads.length; i++) {
+        var gamepad = this.gamepads[i];
+        if (!gamepad) continue;
+
+        var buttons = [];
+        // Create a previous state if needed.
+        if (!this.gamepadsButtonsPrevious[i]) {
+            this.gamepadsButtonsPrevious[i] = [];
+            for (j = 0; j < gamepad.buttons.length; j++) {
+                this.gamepadsButtonsPrevious[i][j] = 0;
+            }
+        }
+        // Set the buttons to values.
+        for (j = 0; j < gamepad.buttons.length; j++) {
+            buttons[j] = gamepad.buttons[j].value;
+        }
+        // Simulate key pressed on gamepad analog.
+        if (gamepad.axes[0] < -this.deadZone) {
+            buttons[14] = 1;
+        } else if (gamepad.axes[0] > this.deadZone) {
+            buttons[15] = 1;
+        }
+        if (gamepad.axes[1] < -this.deadZone) {
+            buttons[12] = 1;
+        } else if (gamepad.axes[1] > this.deadZone) {
+            buttons[13] = 1;
+        }
+        // Check if a button is pressed based on the last button state.
+        for (j = 0; j < buttons.length; j++) {
+            var isPressed = false;
+            var isUp = false;
+
+            if (this.gamepadsButtonsPrevious[i][j] <= this.deadZone && buttons[j] > this.deadZone) {
+                isPressed = true;
+            }
+            if (this.gamepadsButtonsPrevious[i][j] > this.deadZone && buttons[j] <= this.deadZone) {
+                isUp = true;
+            }
+            var padCode = 'GP' + (i + 1) + '-' + j;
+            if (this.forceSingleGamepad) {
+                padCode = padName + j;
+            }
+            if (isPressed) {
+                // Handle first press.
+                if (!this.keysDown[padCode]) {
+                    this.keysJustDown[padCode] = true;
+                    this.keysDown[padCode] = true;
+                }
+
+                // Update every hotkey.
+                if (this.hotkeys[padCode] && this.keysJustDown[padCode]) {
+                    for (k = 0; k < this.hotkeys[padCode].length; k++) {
+                        this.keysDown[this.hotkeys[padCode][k]] = true;
+                        this.keysJustDown[this.hotkeys[padCode][k]] = this.keysJustDown[padCode];
+                    }
+                }
+            }
+            if (isUp) {
+                // Signal a button is no longer pressed.
+                if (this.keysDown[padCode]) {
+                    this.keysDown[padCode] = false;
+                    this.keysUp[padCode] = true;
+                }
+
+                // Update every hotkey.
+                if (this.hotkeys[padCode]) {
+                    for (k = 0; k < this.hotkeys[padCode].length; k++) {
+                        if (this.keysDown[this.hotkeys[padCode][k]]) {
+                            this.keysDown[this.hotkeys[padCode][k]] = false;
+                            this.keysUp[this.hotkeys[padCode][k]] = true;
+                        }
+                    }
+                }
+            }
+            // Update the previous pad state.
+            this.gamepadsButtonsPrevious[i][j] = buttons[j];
+        }
+    }
+};
+
+/**
+ * Cleans up the input system for use with the next update.
+ */
+Input.prototype.flush = function () {
+    "use strict";
+
+    this.isMouseClicked.left = false;
+    this.isMouseClicked.middle = false;
+    this.isMouseClicked.right = false;
+    this.isMouseReleased.left = false;
+    this.isMouseReleased.middle = false;
+    this.isMouseReleased.right = false;
+    this.keysUp = {};
+    this.keysJustDown = {};
+};
+
+/**
+ * Unprojects the mouse inputs to a plane.
+ * @param {THREE.Camera} camera the camera to use.
+ * @param {THREE.Mesh} plane the plane to use.
+ * @returns {{x: number, y: number, z: number}}
+ */
+Input.prototype.unproject = function (camera, plane) {
+    "use strict";
+
+    var x, y, z;
+    var vector = new THREE.Vector3(this.mouseX, this.mouseY, 1);
+    var projector = new THREE.Projector();
+    projector.unprojectVector(vector, camera);
+    var raycaster = new THREE.Raycaster();
+    raycaster.set(camera.position, vector.sub(camera.position).normalize());
+    var intersects = raycaster.intersectObject(plane, false);
+    if (intersects.length > 0) {
+        var point = intersects[0].point;
+        x = point.x;
+        y = point.y;
+        z = point.z;
+    }
+
+    return { x: x, y: y, z: z };
+};
+
+/**
+ * Adds a hotkey to a key.
+ * @param {String} key the key to assign to a hotkey.
+ * @param {String} hotkey the hotkey name.
+ */
+Input.prototype.addHotkey = function (key, hotkey) {
+    "use strict";
+    if (!this.hotkeys[key]) this.hotkeys[key] = [];
+
+    if (this.hotkeys[key].indexOf(hotkey) === -1) {
+        this.hotkeys[key].push(hotkey);
+    }
+};
+
+/**
+ * Removes a key from the hotkey.
+ * @param {String} key the key to remove a hotkey from.
+ * @param {String} hotkey the hotkey name.
+ */
+Input.prototype.removeHotkey = function (key, hotkey) {
+    "use strict";
+
+    if (this.hotkeys[key]) {
+        var index = this.hotkeys[key].indexOf(hotkey);
+        if (index !== -1) {
+            this.hotkeys[key].splice(index, 1);
+        }
+    }
+};
+
+/**
+ * Removes all hotkeys.
+ */
+Input.prototype.removeAllHotkeys = function () {
+    "use strict";
+
+    this.hotkeys = {};
+};
+
+/**
+ * Prevent default inputs on the element.
+ * @param {HTMLElement} element the element to prevent default inputs of.
+ */
+Input.prototype.disableDefaults = function (element) {
+    "use strict";
+
+    // Disable the context menu.
+    element.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    }, false);
+    // Disable scrolling when in canvas.
+    function onWheelScroll(e) {
+        e.preventDefault();
+    }
+    element.addEventListener('DOMMouseScroll', function (e) {
+        onWheelScroll(e);
+    }, false);
+    element.onmousewheel = onWheelScroll;
+    // Disable key scrolling.
+    element.ownerDocument.addEventListener('keydown', (function (e) {
+        if (this.focusElement !== this.document) return;
+        if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+            e.preventDefault();
+        }
+    }).bind(this), false);
+};
+
+/**
+ * Converts a character to a key code.
+ * @param {String} input the character to convert.
+ * @return {Number} the key code.
+ */
+Input.CharToKeyCode = function (input) {
+    "use strict";
+
+    return input.charCodeAt(0);
+};
+
+/**
+ * Mouse buttons hold the raw input numbers for the mouse.
+ * @type {{Left: number, Middle: number, Right: number}}
+ */
+Input.MouseButtons = {
+    Left: 0,
+    Middle: 1,
+    Right: 2
+};
+
+var mouseName = 'MB1-';
+/**
+ * Mouse codes are used to treat mouse buttons as normal keyboard buttons.
+ * @type {{Left: string, Middle: string, Right: string}}
+ */
+Input.MouseCodes = {
+    Left: mouseName + '0',
+    Middle: mouseName + '1',
+    Right: mouseName + '2'
+};
+
+/**
+ * Character codes for a key.
+ */
+Input.CharCodes = {
+    Space: 32,
+    Left: 37,
+    Up: 38,
+    Right: 39,
+    Down: 40,
+    Shift: 16,
+    Ctrl: 17,
+    Alt: 18,
+    Tab: 9,
+    CapsLock: 20
+};
+
+var padName = 'GP1-';
+Input.P1PadCodes = {
+    AxisX: padName + 'AX',
+    AxisY: padName + 'AY',
+    AxisZ: padName + 'AZ',
+    Left: padName + 14,
+    Up: padName + 12,
+    Right: padName + 15,
+    Down: padName + 13,
+    ButtonLeft: padName + 2,
+    ButtonUp: padName + 3,
+    ButtonRight: padName + 1,
+    ButtonDown: padName + 0,
+    L1: padName + 4,
+    R1: padName + 5,
+    L2: padName + 6,
+    R2: padName + 7,
+    L3: padName + 10,
+    R3: padName + 11,
+    Select: padName + 8,
+    Start: padName + 9
+};
+
+module.exports = Input;
+module.exports.MouseButtons = Input.MouseButtons;
+module.exports.MouseCodes = Input.MouseCodes;
+module.exports.CharCodes = Input.CharCodes;
+module.exports.P1PadCodes = Input.P1PadCodes;
+
+}).call(this,require('_process'))
+
+},{"_process":41}],57:[function(require,module,exports){
 "use strict";
 
 /**
@@ -24214,7 +24958,7 @@ var RenderLayer = (function () {
 exports["default"] = RenderLayer;
 module.exports = exports["default"];
 
-},{}],57:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -24416,8 +25160,11 @@ var StateSwitcher = (function () {
 exports["default"] = StateSwitcher;
 module.exports = exports["default"];
 
-},{"lodash":35}],58:[function(require,module,exports){
+},{"lodash":35}],59:[function(require,module,exports){
 "use strict";
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -24506,9 +25253,10 @@ Debug.Globals = {
     instance: new Debug()
 };
 
-module.exports = Debug;
+exports['default'] = Debug;
+module.exports = exports['default'];
 
-},{"dat-gui":10,"lodash":35}],59:[function(require,module,exports){
+},{"dat-gui":10,"lodash":35}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -24516,7 +25264,7 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -24723,7 +25471,7 @@ var BotState = (function (_CoreState) {
 exports['default'] = BotState;
 module.exports = exports['default'];
 
-},{"../../config.json":1,"../core/core-state":54,"../debug/debug":58,"lodash":35,"socket.io-client":40}],60:[function(require,module,exports){
+},{"../../config.json":1,"../core/core-state":54,"../debug/debug":59,"lodash":35,"socket.io-client":42}],61:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -24731,7 +25479,7 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -24807,7 +25555,7 @@ var EndState = (function (_CoreState) {
 exports['default'] = EndState;
 module.exports = exports['default'];
 
-},{"../core/core-state":54}],61:[function(require,module,exports){
+},{"../core/core-state":54}],62:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -24815,7 +25563,7 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -24839,6 +25587,10 @@ var _configJson = require('../../config.json');
 
 var _configJson2 = _interopRequireDefault(_configJson);
 
+var _coreInput = require('../core/input');
+
+var _coreInput2 = _interopRequireDefault(_coreInput);
+
 var gridKey = {
     empty: 0,
     blocked: 1,
@@ -24859,9 +25611,10 @@ var GameState = (function (_CoreState) {
      * Creates the game state.
      * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to retrieve from.
      */
 
-    function GameState(window, layer) {
+    function GameState(window, layer, input) {
         _classCallCheck(this, GameState);
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
@@ -24870,6 +25623,7 @@ var GameState = (function (_CoreState) {
 
         this._window = window;
         this._layer = layer;
+        this._input = input;
         this._socket = null;
 
         this._container = null;
@@ -24880,7 +25634,8 @@ var GameState = (function (_CoreState) {
             isAlive: false,
             length: 0,
             segments: [],
-            players: 0
+            players: 0,
+            delay: 150
         };
 
         this._grid = [];
@@ -24891,9 +25646,6 @@ var GameState = (function (_CoreState) {
 
         this._blocks = [];
         this._blockWidth = _configJson2['default'].blockWidth;
-
-        this._keyDown = this._onKeyDown.bind(this);
-        this._previousKeyDown = null;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -24911,7 +25663,17 @@ var GameState = (function (_CoreState) {
         this._foodTexture.render(graphics);
     }
 
+    /**
+     * Calls a function after a set amount of time.
+     * @param  {Function} fn the function to call after a certain amount of time.
+     */
+
     _createClass(GameState, [{
+        key: '_delay',
+        value: function _delay(fn) {
+            window.setTimeout(fn, this._debug.delay);
+        }
+    }, {
         key: 'onAdd',
         value: function onAdd() {
             _debugDebug2['default'].Globals.instance.addControl(this._debug, 'index', { listen: true });
@@ -24919,26 +25681,17 @@ var GameState = (function (_CoreState) {
             _debugDebug2['default'].Globals.instance.addControl(this._debug, 'isAlive', { listen: true });
             _debugDebug2['default'].Globals.instance.addControl(this._debug, 'length', { listen: true });
             _debugDebug2['default'].Globals.instance.addControl(this._debug, 'players', { listen: true });
-        }
-    }, {
-        key: '_onKeyDown',
-        value: function _onKeyDown(e) {
-            if (!this._socket) return;
-            var key = e.key || e.keyIdentifier || e.keyCode;
-            switch (key) {
-                case 'Up':
-                    this._socket.emit('direct', { direction: cardinal.N });
-                    break;
-                case 'Right':
-                    this._socket.emit('direct', { direction: cardinal.E });
-                    break;
-                case 'Down':
-                    this._socket.emit('direct', { direction: cardinal.S });
-                    break;
-                case 'Left':
-                    this._socket.emit('direct', { direction: cardinal.W });
-                    break;
-            }
+            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'delay', { listen: true });
+
+            // Bind keys to hotkeys
+            this._input.addHotkey(_coreInput2['default'].CharToKeyCode('W'), 'move-up');
+            this._input.addHotkey(_coreInput2['default'].CharCodes.Up, 'move-up');
+            this._input.addHotkey(_coreInput2['default'].CharToKeyCode('D'), 'move-right');
+            this._input.addHotkey(_coreInput2['default'].CharCodes.Right, 'move-right');
+            this._input.addHotkey(_coreInput2['default'].CharToKeyCode('S'), 'move-down');
+            this._input.addHotkey(_coreInput2['default'].CharCodes.Down, 'move-down');
+            this._input.addHotkey(_coreInput2['default'].CharToKeyCode('A'), 'move-left');
+            this._input.addHotkey(_coreInput2['default'].CharCodes.Left, 'move-left');
         }
     }, {
         key: 'onEnter',
@@ -24949,6 +25702,7 @@ var GameState = (function (_CoreState) {
             this._container = new PIXI.Container();
             this._layer.addChild(this._container);
 
+            // Connect to the server
             this._socket = _socketIoClient2['default'].connect(_configJson2['default'].host, {
                 'force new connection': true
             });
@@ -24962,43 +25716,75 @@ var GameState = (function (_CoreState) {
                 });
 
                 _this._socket.on('start', function (data) {
-                    var snake = data.snake;
-                    _this._grid = data.grid;
-                    _this._width = data.width;
-                    _this._debug.index = snake.index;
-                    _this._debug.isAlive = snake.isAlive;
-                    _this._debug.direction = snake.direction;
-                    _this._debug.length = snake.segments.length;
-                    _this._debug.segments = snake.segments;
+                    _this._delay(function () {
+                        console.log('start');
+                        var snake = data.snake;
+                        _this._grid = data.grid;
+                        _this._width = data.width;
+                        _this._debug.index = snake.index;
+                        _this._debug.isAlive = snake.isAlive;
+                        _this._debug.direction = snake.direction;
+                        _this._debug.length = snake.segments.length;
+                        _this._debug.segments = snake.segments;
+                    });
                 });
 
                 _this._socket.on('die', function (data) {
-                    console.log('dead');
-                    _this._debug.isAlive = false;
-                    _this.switcher.switchState(_this, _this.switcher.retrieveState('EndState'), null, {
-                        score: data.score
+                    _this._delay(function () {
+                        console.log('dead');
+                        _this._debug.isAlive = false;
+                        _this.switcher.switchState(_this, _this.switcher.retrieveState('EndState'), null, {
+                            score: data.score
+                        });
                     });
                 });
 
                 _this._socket.on('update', function (data) {
-                    var snake = data.snake;
-                    _this._grid = data.grid;
-                    _this._debug.players = data.players;
-                    _this._debug.index = snake.index;
-                    _this._debug.isAlive = snake.isAlive;
-                    _this._debug.direction = snake.direction;
-                    _this._debug.length = snake.segments.length;
-                    _this._debug.segments = snake.segments;
+                    _this._delay(function () {
+                        var snake = data.snake;
+                        _this._grid = data.grid;
+                        _this._debug.players = data.players;
+                        _this._debug.index = snake.index;
+                        _this._debug.isAlive = snake.isAlive;
+                        _this._debug.direction = snake.direction;
+                        _this._debug.length = snake.segments.length;
+                        _this._debug.segments = snake.segments;
+                    });
                 });
-
-                _this._window.addEventListener('keydown', _this._keyDown);
-
                 console.log('Connected!');
             });
         }
     }, {
+        key: '_checkKeys',
+        value: function _checkKeys() {
+            var _this2 = this;
+
+            if (!this._socket) return;
+
+            var direction;
+            if (this._input.keysJustDown['move-up']) {
+                direction = cardinal.N;
+            }
+            if (this._input.keysJustDown['move-right']) {
+                direction = cardinal.E;
+            }
+            if (this._input.keysJustDown['move-down']) {
+                direction = cardinal.S;
+            }
+            if (this._input.keysJustDown['move-left']) {
+                direction = cardinal.W;
+            }
+            if (direction) {
+                this._delay(function () {
+                    _this2._socket.emit('direct', { direction: direction });
+                });
+            }
+        }
+    }, {
         key: 'update',
-        value: function update(dt) {}
+        value: function update(dt) {
+            this._checkKeys();
+        }
     }, {
         key: 'preRender',
         value: function preRender() {
@@ -25045,7 +25831,7 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../../config.json":1,"../core/core-state":54,"../debug/debug":58,"socket.io-client":40}],62:[function(require,module,exports){
+},{"../../config.json":1,"../core/core-state":54,"../core/input":56,"../debug/debug":59,"socket.io-client":42}],63:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -25053,7 +25839,7 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -25138,7 +25924,7 @@ var StartState = (function (_CoreState) {
 exports['default'] = StartState;
 module.exports = exports['default'];
 
-},{"../core/core-state":54}],63:[function(require,module,exports){
+},{"../core/core-state":54}],64:[function(require,module,exports){
 "use strict";
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -25146,6 +25932,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'd
 var _coreCore = require('./core/core');
 
 var _coreCore2 = _interopRequireDefault(_coreCore);
+
+var _coreInput = require('./core/input');
+
+var _coreInput2 = _interopRequireDefault(_coreInput);
 
 var _coreStateSwitcher = require('./core/state-switcher');
 
@@ -25189,7 +25979,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var core = new _coreCore2['default'](window);
     core.updateStepSize = 1000 / 15;
     core.renderStepSize = 1000 / 15;
+    core.allowUpdateSkips = true;
+    core.allowRenderSkips = true;
 
+    // Intialize the input
+    var input = new _coreInput2['default'](window, document.getElementById('game'));
+
+    // Initialize and add the renderer
     var layer = new _pixiLayer2['default'](document.getElementById('game'));
     core.addRenderLayer(layer);
 
@@ -25200,7 +25996,7 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
     var startState = new _gameStartState2['default'](window, layer);
     stateSwitcher.addState(startState);
-    var gameState = new _gameGameState2['default'](window, layer);
+    var gameState = new _gameGameState2['default'](window, layer, input);
     stateSwitcher.addState(gameState);
     var endState = new _gameEndState2['default'](window, layer);
     stateSwitcher.addState(endState);
@@ -25211,6 +26007,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Start the main loop
     core.start();
+    core.addLoopCallback(CoreCallbacks.preUpdate, function (dt) {
+        input.update();
+    });
+    core.addLoopCallback(CoreCallbacks.postUpdate, function (dt) {
+        input.flush();
+    });
     core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
         elapsed.elapsed = core.timeElapsed;
     });
@@ -25229,7 +26031,7 @@ document.addEventListener('DOMContentLoaded', function () {
     //window.addEventListener('resize', resizeCanvas);
 });
 
-},{"../config.json":1,"./core/core":55,"./core/state-switcher":57,"./debug/debug":58,"./game/bot-state":59,"./game/end-state":60,"./game/game-state":61,"./game/start-state":62,"./pixi/layer":64}],64:[function(require,module,exports){
+},{"../config.json":1,"./core/core":55,"./core/input":56,"./core/state-switcher":58,"./debug/debug":59,"./game/bot-state":60,"./game/end-state":61,"./game/game-state":62,"./game/start-state":63,"./pixi/layer":65}],65:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -25238,7 +26040,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
@@ -25343,7 +26145,7 @@ var PixiRenderLayer = (function (_RenderLayer) {
 exports["default"] = PixiRenderLayer;
 module.exports = exports["default"];
 
-},{"../core/render-layer":56}]},{},[63])
+},{"../core/render-layer":57}]},{},[64])
 
 
 //# sourceMappingURL=snake.js.map

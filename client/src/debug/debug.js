@@ -66,4 +66,4 @@ Debug.Globals = {
     instance: new Debug()
 };
 
-module.exports = Debug;
+export default Debug;

@@ -14,6 +14,7 @@ var snake = {
         var screenWidth = options.screenWidth || 20;
         var screenHeight = options.screenHeight || 20;
         var food = options.food || 3;
+        var tickRate = options.tickRate || 6;
 
         // Create a single shard instance for now
         var shard = new SnakeShard(width, height, screenWidth, screenHeight);
