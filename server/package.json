@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "start": "node .",
     "test": "node_modules/.bin/lab -c",
     "test-travis": "node_modules/.bin/lab -c -r lcov -o lcov.info",
     "dev": "node . | ./node_modules/.bin/bunyan -o short"
