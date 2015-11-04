@@ -26,7 +26,6 @@
     "gulp-sourcemaps": "^1.6.0",
     "gulp-uglify": "^1.4.2",
     "gulp-util": "^3.0.6",
-    "http-server": "^0.8.5",
     "jsdom": "^6.5.1",
     "mocha": "^2.3.3",
     "vinyl-buffer": "^1.0.0",
@@ -34,6 +33,7 @@
     "watchify": "^3.4.0"
   },
   "dependencies": {
+    "http-server": "^0.8.5",
     "dat-gui": "^0.5.0",
     "lodash": "^3.10.1",
     "normalize.css": "^3.0.3",
