@@ -1,9 +1,9 @@
-"use strict";
+'use strict';
 
 var Server = require('./src/server');
 var config = require('./config.json');
 
-var port = config.port;
+var port = process.env.PORT || config.port;
 var server = new Server(port);
 server.start().then(function(server) {
     console.log('Server started');

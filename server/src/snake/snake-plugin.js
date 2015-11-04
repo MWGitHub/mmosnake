@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var socketIO = require('socket.io');
 var Logger = require('../util/logger');
 var SnakeShard = require('./shard');
