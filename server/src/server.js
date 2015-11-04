@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var Hapi = require('hapi');
 var co = require('co');
 var logger = require('./util/logger');
@@ -98,8 +98,8 @@ class Server {
                 if (err) return reject(err);
                 logger.info('Server stopped.');
                 resolve(this.server);
-            })
-        })
+            });
+        });
     }
 }
 

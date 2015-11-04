@@ -6,7 +6,7 @@ var SnakeShard = require('./shard');
 var snake = {
     register: function(server, options, next) {
         var io = socketIO(server.listener, {
-            serveClient: false
+            serveClient: true
         });
 
         var width = options.gridWidth || 20;
