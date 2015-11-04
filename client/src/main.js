@@ -56,17 +56,5 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.postLoop, function(dt) {
         elapsed.elapsed = core.timeElapsed;
     });
-
-    var resizeCanvas = function() {
-        /*
-        var canvas = document.getElementById('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        */
-        //core.resize(window.innerWidth, window.innerHeight);
-        core.resize(Config.screenWidth * Config.blockWidth, Config.screenHeight * Config.blockWidth);
-    };
-    resizeCanvas();
-
-    //window.addEventListener('resize', resizeCanvas);
+    core.resize(Config.screenWidth * Config.blockWidth, Config.screenHeight * Config.blockWidth);
 });

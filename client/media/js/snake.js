@@ -53377,7 +53377,8 @@ var _pixiCamera2 = _interopRequireDefault(_pixiCamera);
 var gridKey = {
     empty: 0,
     blocked: 1,
-    food: 2
+    food: 2,
+    snake: 3
 };
 
 var cardinal = {
@@ -53479,7 +53480,7 @@ var GameState = (function (_CoreState) {
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new _pixiJs2['default'].Graphics();
-        graphics.beginFill(0xFFFFFF);
+        graphics.beginFill(0xFFFFFF, 1);
         graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
         graphics.endFill();
         this._blockTexture.render(graphics);
@@ -53487,9 +53488,17 @@ var GameState = (function (_CoreState) {
         // Create an instance of the food texture
         this._foodTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockHeight);
         graphics = new _pixiJs2['default'].Graphics();
-        graphics.beginFill(0xFFFFFF);
+        graphics.beginFill(0xFFFFFF, 1);
         graphics.drawCircle(this._blockWidth / 2, this._blockWidth / 2, this._blockWidth / 2);
         this._foodTexture.render(graphics);
+
+        // Create an instance of a snake texture
+        this._snakeTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
+        graphics = new _pixiJs2['default'].Graphics();
+        graphics.beginFill(0x00FF00, 1);
+        graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
+        graphics.endFill();
+        this._snakeTexture.render(graphics);
     }
 
     /**
@@ -53562,6 +53571,11 @@ var GameState = (function (_CoreState) {
                         _this._player.direction = data.direction;
                         _this._players = data.players;
                         _this._isRunning = true;
+
+                        // Set the starting camera to where the player is
+                        var camera = _this._getPlayerCameraPosition();
+                        _this._camera.position.x = camera.x;
+                        _this._camera.position.y = camera.y;
 
                         debug.players = data.players.length;
                         debug.index = data.index;
@@ -53649,6 +53663,8 @@ var GameState = (function (_CoreState) {
                     block = new _pixiJs2['default'].Sprite(this._blockTexture);
                 } else if (this._grid[i] === gridKey.food) {
                     block = new _pixiJs2['default'].Sprite(this._foodTexture);
+                } else if (this._grid[i] === gridKey.snake) {
+                    block = new _pixiJs2['default'].Sprite(this._snakeTexture);
                 }
 
                 if (block) {
@@ -53661,6 +53677,33 @@ var GameState = (function (_CoreState) {
                 }
             }
         }
+
+        /**
+         * Retrieves the camera position centered on the player.
+         * @returns {{x: number, y: number}}
+         * @private
+         */
+    }, {
+        key: '_getPlayerCameraPosition',
+        value: function _getPlayerCameraPosition() {
+            var x = this._player.index % this._width * this._blockWidth;
+            var y = Math.floor(this._player.index / this._width) * this._blockWidth;
+            // Keep camera in bounds
+            if (x < this._viewport.width / 2) {
+                x = this._viewport.width / 2;
+            } else if (x > this._width * this._blockWidth - this._viewport.width / 2) {
+                x = this._width * this._blockWidth - this._viewport.width / 2;
+            }
+            if (y < this._viewport.height / 2) {
+                y = this._viewport.height / 2;
+            } else if (y > this._height * this._blockWidth - this._viewport.height / 2) {
+                y = this._height * this._blockWidth - this._viewport.height / 2;
+            }
+            return {
+                x: x,
+                y: y
+            };
+        }
     }, {
         key: 'update',
         value: function update(dt) {
@@ -53668,20 +53711,10 @@ var GameState = (function (_CoreState) {
 
             this._checkKeys();
 
-            // Center the camera on the player
-            this._camera.position.x = this._player.index % this._width * this._blockWidth;
-            this._camera.position.y = Math.floor(this._player.index / this._width) * this._blockWidth;
-            // Keep camera in bounds
-            if (this._camera.position.x < this._viewport.width / 2) {
-                this._camera.position.x = this._viewport.width / 2;
-            } else if (this._camera.position.x > this._width * this._blockWidth - this._viewport.width / 2) {
-                this._camera.position.x = this._width * this._blockWidth - this._viewport.width / 2;
-            }
-            if (this._camera.position.y < this._viewport.height / 2) {
-                this._camera.position.y = this._viewport.height / 2;
-            } else if (this._camera.position.y > this._height * this._blockWidth - this._viewport.height / 2) {
-                this._camera.position.y = this._height * this._blockWidth - this._viewport.height / 2;
-            }
+            // Smooth the camera movement to the player location
+            var finalCamera = this._getPlayerCameraPosition();
+            this._camera.position.x += (finalCamera.x - this._camera.position.x) * 0.1;
+            this._camera.position.y += (finalCamera.y - this._camera.position.y) * 0.1;
 
             this._viewport.update();
 
@@ -53898,19 +53931,7 @@ document.addEventListener('DOMContentLoaded', function () {
     core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
         elapsed.elapsed = core.timeElapsed;
     });
-
-    var resizeCanvas = function resizeCanvas() {
-        /*
-        var canvas = document.getElementById('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        */
-        //core.resize(window.innerWidth, window.innerHeight);
-        core.resize(_configJson2['default'].screenWidth * _configJson2['default'].blockWidth, _configJson2['default'].screenHeight * _configJson2['default'].blockWidth);
-    };
-    resizeCanvas();
-
-    //window.addEventListener('resize', resizeCanvas);
+    core.resize(_configJson2['default'].screenWidth * _configJson2['default'].blockWidth, _configJson2['default'].screenHeight * _configJson2['default'].blockWidth);
 });
 
 },{"../config.json":1,"./core/core":184,"./core/input":185,"./core/state-switcher":187,"./debug/debug":188,"./game/bot-state":189,"./game/end-state":190,"./game/game-state":191,"./game/start-state":192,"./pixi/layer":195}],194:[function(require,module,exports){

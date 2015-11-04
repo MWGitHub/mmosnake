@@ -10,7 +10,8 @@ import Camera from '../pixi/camera';
 var gridKey = {
     empty: 0,
     blocked: 1,
-    food: 2
+    food: 2,
+    snake: 3
 };
 
 var cardinal = {
@@ -107,7 +108,7 @@ class GameState extends CoreState {
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new PIXI.Graphics();
-        graphics.beginFill(0xFFFFFF);
+        graphics.beginFill(0xFFFFFF, 1);
         graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
         graphics.endFill();
         this._blockTexture.render(graphics);
@@ -115,9 +116,17 @@ class GameState extends CoreState {
         // Create an instance of the food texture
         this._foodTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockHeight);
         graphics = new PIXI.Graphics();
-        graphics.beginFill(0xFFFFFF);
+        graphics.beginFill(0xFFFFFF, 1);
         graphics.drawCircle(this._blockWidth / 2, this._blockWidth / 2, this._blockWidth / 2);
         this._foodTexture.render(graphics);
+
+        // Create an instance of a snake texture
+        this._snakeTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
+        graphics = new PIXI.Graphics();
+        graphics.beginFill(0x00FF00, 1);
+        graphics.drawRect(0, 0, this._blockWidth, this._blockWidth);
+        graphics.endFill();
+        this._snakeTexture.render(graphics);
     }
 
     /**
@@ -184,6 +193,11 @@ class GameState extends CoreState {
                     this._player.direction = data.direction;
                     this._players = data.players;
                     this._isRunning = true;
+
+                    // Set the starting camera to where the player is
+                    var camera = this._getPlayerCameraPosition();
+                    this._camera.position.x = camera.x;
+                    this._camera.position.y = camera.y;
 
                     debug.players = data.players.length;
                     debug.index = data.index;
@@ -266,6 +280,8 @@ class GameState extends CoreState {
                 block = new PIXI.Sprite(this._blockTexture);
             } else if (this._grid[i] === gridKey.food) {
                 block = new PIXI.Sprite(this._foodTexture);
+            } else if (this._grid[i] === gridKey.snake) {
+                block = new PIXI.Sprite(this._snakeTexture);
             }
 
             if (block) {
@@ -279,25 +295,40 @@ class GameState extends CoreState {
         }
     }
 
+    /**
+     * Retrieves the camera position centered on the player.
+     * @returns {{x: number, y: number}}
+     * @private
+     */
+    _getPlayerCameraPosition() {
+        var x = this._player.index % this._width * this._blockWidth;
+        var y = Math.floor(this._player.index / this._width) * this._blockWidth;
+        // Keep camera in bounds
+        if (x < this._viewport.width / 2) {
+            x = this._viewport.width / 2;
+        } else if (x > this._width * this._blockWidth - this._viewport.width / 2) {
+            x = this._width * this._blockWidth - this._viewport.width / 2;
+        }
+        if (y < this._viewport.height / 2) {
+            y = this._viewport.height / 2;
+        } else if (y > this._height * this._blockWidth - this._viewport.height / 2) {
+            y = this._height * this._blockWidth - this._viewport.height / 2;
+        }
+        return {
+            x: x,
+            y: y
+        }
+    }
+
     update(dt) {
         if (!this._isRunning) return;
 
         this._checkKeys();
 
-        // Center the camera on the player
-        this._camera.position.x = this._player.index % this._width * this._blockWidth;
-        this._camera.position.y = Math.floor(this._player.index / this._width) * this._blockWidth;
-        // Keep camera in bounds
-        if (this._camera.position.x < this._viewport.width / 2) {
-            this._camera.position.x = this._viewport.width / 2;
-        } else if (this._camera.position.x > this._width * this._blockWidth - this._viewport.width / 2) {
-            this._camera.position.x = this._width * this._blockWidth - this._viewport.width / 2;
-        }
-        if (this._camera.position.y < this._viewport.height / 2) {
-            this._camera.position.y = this._viewport.height / 2;
-        } else if (this._camera.position.y > this._height * this._blockWidth - this._viewport.height / 2) {
-            this._camera.position.y = this._height * this._blockWidth - this._viewport.height / 2;
-        }
+        // Smooth the camera movement to the player location
+        var finalCamera = this._getPlayerCameraPosition();
+        this._camera.position.x += (finalCamera.x - this._camera.position.x) * 0.1;
+        this._camera.position.y += (finalCamera.y - this._camera.position.y) * 0.1;
 
         this._viewport.update();
 

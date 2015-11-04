@@ -221,7 +221,7 @@ class Shard {
         var direction = player.direction;
         // Check the value of the next move index
         var value = grid.getValueInDirection(index, direction);
-        if (value < 0 || value === Grid.Keys.blocked) {
+        if (value < 0 || value === Grid.Keys.blocked || value === Grid.Keys.snake) {
             this._die(player);
         } else if (value === Grid.Keys.empty || value === Grid.Keys.food) {
             // Add the previous head position to the front of the segment array
@@ -241,7 +241,7 @@ class Shard {
                 this._food -= 1;
             }
             // Make the current head position an occupied space
-            grid.setValueInDirection(index, direction, Grid.Keys.blocked);
+            grid.setValueInDirection(index, direction, Grid.Keys.snake);
         }
     }
 
@@ -274,14 +274,14 @@ class Shard {
             player.direction = snake.direction;
             player.segments = [].concat(snake.segments);
             player.isAlive = snake.isAlive;
-            this._grid.setGridValue(snake.index, Grid.Keys.blocked);
+            this._grid.setGridValue(snake.index, Grid.Keys.snake);
         } else {
             var start = internals.getStart(this._grid);
             player.index = start.index;
             player.direction = start.direction;
             player.segments = [start.index, start.index, start.index];
             player.isAlive = true;
-            this._grid.setGridValue(start.index, Grid.Keys.blocked);
+            this._grid.setGridValue(start.index, Grid.Keys.snake);
         }
 
         var subgridBounds = this._grid.getSubgridBounds(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
