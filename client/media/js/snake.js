@@ -4,7 +4,8 @@ module.exports={
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
-  "blockWidth": 16
+  "blockWidth": 16,
+  "tickRate": 6
 }
 },{}],2:[function(require,module,exports){
 module.exports = after
@@ -53558,6 +53559,7 @@ var GameState = (function (_CoreState) {
                         _this._debug.direction = data.direction;
                         _this._debug.length = data.segments.length;
                         _this._debug.segments = data.segments;
+                        console.log(_this._subgridBounds);
                     });
                 });
                 console.log('Connected!');
