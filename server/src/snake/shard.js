@@ -149,9 +149,25 @@ class Shard {
     }
 
     _createPlayerInfo(player, grid, subgridBounds) {
+        var players = [];
+        _.forEach(this._players, (player) => {
+            if (player.isAlive) {
+                players.push({
+                    id: player.id,
+                    index: player.index,
+                    segments: player.segments,
+                    isAlive: player.isAlive,
+                    direction: player.direction
+                });
+            }
+        });
+
         return {
-            players: this.playerCount,
+            id: player.id,
+            players: players,
             grid: grid,
+            width: this._grid.width,
+            height: this._grid.height,
             tick: this._tick,
             subgridBounds: subgridBounds,
             segments: player.segments,

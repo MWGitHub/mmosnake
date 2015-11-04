@@ -1,6 +1,12 @@
 'use strict';
 
 /**
+ * ID counter for players.
+ * @type {number}
+ */
+var uid = 0;
+
+/**
  * Represents a player.
  */
 class Player {
@@ -9,6 +15,14 @@ class Player {
      * @param socket the socket created for the player.
      */
     constructor(socket) {
+        uid++;
+
+        /**
+         * Unique ID for the player.
+         * @type {number}
+         */
+        this.id = uid;
+
         /**
          * Socket used for the player.
          */

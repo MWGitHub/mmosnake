@@ -20,10 +20,19 @@ var cardinal = {
     W: 4
 };
 
+var debug = {
+    index: 0,
+    direction: 0,
+    isAlive: false,
+    length: 0,
+    segments: [],
+    players: 0,
+    delay: 150
+};
+
 class GameState extends CoreState {
     /**
      * Creates the game state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to retrieve from.
      */
@@ -58,19 +67,10 @@ class GameState extends CoreState {
          */
         this._camera = null;
 
-        this._debug = {
-            index: 0,
-            direction: 0,
-            isAlive: false,
-            length: 0,
-            segments: [],
-            players: 0,
-            delay: 150
-        };
-
         this._grid = [];
         this._subgridBounds = null;
         this._width = 0;
+        this._height = 0;
 
         this._screenWidth = Config.screenWidth;
         this._screenHeight = Config.screenHeight;
@@ -78,6 +78,31 @@ class GameState extends CoreState {
 
         this._blocks = [];
         this._blockWidth = Config.blockWidth;
+
+        /**
+         * Player that is being controlled.
+         * @type {{id: number, index: number, direction: number}}
+         * @private
+         */
+        this._player = {
+            id: 0,
+            index: 0,
+            direction: 0
+        };
+
+        /**
+         * Players in the server.
+         * @type {Array.<{id: number, index: number, direction: number}>}
+         * @private
+         */
+        this._players = null;
+
+        /**
+         * True to set the game as running.
+         * @type {boolean}
+         * @private
+         */
+        this._isRunning = false;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -100,16 +125,16 @@ class GameState extends CoreState {
      * @param  {Function} fn the function to call after a certain amount of time.
      */
     _delay(fn) {
-        window.setTimeout(fn, this._debug.delay);
+        window.setTimeout(fn, debug.delay);
     };
 
     onAdd() {
-        Debug.Globals.instance.addControl(this._debug, 'index', {listen: true});
-        Debug.Globals.instance.addControl(this._debug, 'direction', {listen: true});
-        Debug.Globals.instance.addControl(this._debug, 'isAlive', {listen: true});
-        Debug.Globals.instance.addControl(this._debug, 'length', {listen: true});
-        Debug.Globals.instance.addControl(this._debug, 'players', {listen: true});
-        Debug.Globals.instance.addControl(this._debug, 'delay', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'index', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'direction', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'isAlive', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'length', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'players', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'delay', {listen: true});
 
         // Bind keys to hotkeys
         this._input.addHotkey(Input.CharToKeyCode('W'), 'move-up');
@@ -122,7 +147,7 @@ class GameState extends CoreState {
         this._input.addHotkey(Input.CharCodes.Left, 'move-left');
     }
 
-    onEnter() {
+    onEnter(params) {
         console.log('entering game state');
         // Create the viewport and add it to the rendering layer
         this._camera = new Camera();
@@ -153,18 +178,26 @@ class GameState extends CoreState {
                     this._grid = data.grid;
                     this._subgridBounds = data.subgridBounds;
                     this._width = data.width;
-                    this._debug.index = data.index;
-                    this._debug.isAlive = data.isAlive;
-                    this._debug.direction = data.direction;
-                    this._debug.length = data.segments.length;
-                    this._debug.segments = data.segments;
+                    this._height = data.height;
+                    this._player.id = data.id;
+                    this._player.index = data.index;
+                    this._player.direction = data.direction;
+                    this._players = data.players;
+                    this._isRunning = true;
+
+                    debug.players = data.players.length;
+                    debug.index = data.index;
+                    debug.isAlive = data.isAlive;
+                    debug.direction = data.direction;
+                    debug.length = data.segments.length;
+                    debug.segments = data.segments;
                 });
             });
 
             this._socket.on('die', (data) => {
                 this._delay(() => {
                     console.log('dead');
-                    this._debug.isAlive = false;
+                    debug.isAlive = false;
                     this.switcher.switchState(this, this.switcher.retrieveState('EndState'), null, {
                         score: data.score
                     });
@@ -175,12 +208,18 @@ class GameState extends CoreState {
                 this._delay(() => {
                     this._grid = data.grid;
                     this._subgridBounds = data.subgridBounds;
-                    this._debug.players = data.players;
-                    this._debug.index = data.index;
-                    this._debug.isAlive = data.isAlive;
-                    this._debug.direction = data.direction;
-                    this._debug.length = data.segments.length;
-                    this._debug.segments = data.segments;
+                    this._width = data.width;
+                    this._player.id = data.id;
+                    this._player.index = data.index;
+                    this._player.direction = data.direction;
+                    this._players = data.players;
+
+                    debug.players = data.players.length;
+                    debug.index = data.index;
+                    debug.isAlive = data.isAlive;
+                    debug.direction = data.direction;
+                    debug.length = data.segments.length;
+                    debug.segments = data.segments;
                 });
             });
             console.log('Connected!');
@@ -188,8 +227,6 @@ class GameState extends CoreState {
     }
 
     _checkKeys() {
-        if (!this._socket) return;
-
         var direction;
         if (this._input.keysJustDown['move-up']) {
             direction = cardinal.N;
@@ -210,12 +247,19 @@ class GameState extends CoreState {
         }
     }
 
+    /**
+     * Generate the display for rendering.
+     * @private
+     */
     _generateDisplay() {
         var i;
         for (i = 0; i < this._blocks.length; i++) {
             this._scene.display.removeChild(this._blocks[i]);
         }
         this._blocks = [];
+        var startX = this._subgridBounds.x1 * this._blockWidth;
+        var startY = this._subgridBounds.y1 * this._blockWidth
+        var width = this._subgridBounds.x2 - this._subgridBounds.x1;
         for (i = 0; i < this._grid.length; i++) {
             var block = null;
             if (this._grid[i] === gridKey.blocked) {
@@ -225,10 +269,10 @@ class GameState extends CoreState {
             }
 
             if (block) {
-                var col = i % (this._screenWidth + this._screenBuffer * 2);
-                var row = Math.floor(i / (this._screenWidth + this._screenBuffer * 2));
-                block.position.x = col * this._blockWidth;
-                block.position.y = row * this._blockWidth;
+                var col = i % width;
+                var row = Math.floor(i / width);
+                block.position.x = startX + col * this._blockWidth;
+                block.position.y = startY + row * this._blockWidth;
                 this._blocks.push(block);
                 this._scene.display.addChild(block);
             }
@@ -236,11 +280,24 @@ class GameState extends CoreState {
     }
 
     update(dt) {
+        if (!this._isRunning) return;
+
         this._checkKeys();
 
-        //this._camera += 1;
-        this._camera.position.x = this._viewport.width / 2 + this._screenBuffer * 2 * this._blockWidth;
-        this._camera.position.y = this._viewport.height / 2 + this._screenBuffer * 2 * this._blockWidth;
+        // Center the camera on the player
+        this._camera.position.x = this._player.index % this._width * this._blockWidth;
+        this._camera.position.y = Math.floor(this._player.index / this._width) * this._blockWidth;
+        // Keep camera in bounds
+        if (this._camera.position.x < this._viewport.width / 2) {
+            this._camera.position.x = this._viewport.width / 2;
+        } else if (this._camera.position.x > this._width * this._blockWidth - this._viewport.width / 2) {
+            this._camera.position.x = this._width * this._blockWidth - this._viewport.width / 2;
+        }
+        if (this._camera.position.y < this._viewport.height / 2) {
+            this._camera.position.y = this._viewport.height / 2;
+        } else if (this._camera.position.y > this._height * this._blockWidth - this._viewport.height / 2) {
+            this._camera.position.y = this._height * this._blockWidth - this._viewport.height / 2;
+        }
 
         this._viewport.update();
 
@@ -249,10 +306,11 @@ class GameState extends CoreState {
 
     onLeave() {
         console.log('leaving game state');
-        this._window.removeEventListener('keydown', this._keyDown);
+        this._isRunning = false;
 
         if (this._socket) {
             this._socket.disconnect();
+            this._socket = null;
         }
 
         // Remove the displays

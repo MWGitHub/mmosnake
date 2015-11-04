@@ -1,5 +1,5 @@
 {
-  "host": "https://msnake-server.herokuapp.com",
+  "host": "localhost:5000",
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,

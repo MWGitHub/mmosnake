@@ -40,7 +40,7 @@ describe('shard', function() {
                         foodCount++;
                     }
                 }
-                assert.equal(data.players, 1);
+                assert.equal(data.players.length, 1);
                 assert.equal(foodCount, limit);
             });
 
@@ -62,7 +62,7 @@ describe('shard', function() {
         var ticks = 0;
 
         var updateListener = function(data) {
-            assert.equal(data.players, 1);
+            assert.equal(data.players.length, 1);
 
             // Add second socket
             clientSocket1.removeListener('update', updateListener);
@@ -80,13 +80,13 @@ describe('shard', function() {
 
         clientSocket2.on('update', (data) => {
             if (ticks === 2) {
-                assert.equal(data.players, 2);
+                assert.equal(data.players.length, 2);
                 // Remove the first socket
                 clientSocket1.emit('disconnect');
                 ticks++;
                 shard.tick();
             } else if (ticks === 3) {
-                assert.equal(data.players, 1);
+                assert.equal(data.players.length, 1);
                 done();
             }
         });
@@ -104,8 +104,8 @@ describe('shard', function() {
         var clientSocket = new Socket();
 
         clientSocket.on('update', (data) => {
-            assert.equal(data.players, 1);
-            assert.equal(data.players, shard.playerCount);
+            assert.equal(data.players.length, 1);
+            assert.equal(data.players.length, shard.playerCount);
 
             shard.removePlayer(serverSocket.id);
             assert.equal(shard.playerCount, 0);

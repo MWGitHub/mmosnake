@@ -1,6 +1,6 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports={
-  "host": "https://msnake-server.herokuapp.com",
+  "host": "localhost:5000",
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
@@ -53387,12 +53387,21 @@ var cardinal = {
     W: 4
 };
 
+var debug = {
+    index: 0,
+    direction: 0,
+    isAlive: false,
+    length: 0,
+    segments: [],
+    players: 0,
+    delay: 150
+};
+
 var GameState = (function (_CoreState) {
     _inherits(GameState, _CoreState);
 
     /**
      * Creates the game state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to retrieve from.
      */
@@ -53430,19 +53439,10 @@ var GameState = (function (_CoreState) {
          */
         this._camera = null;
 
-        this._debug = {
-            index: 0,
-            direction: 0,
-            isAlive: false,
-            length: 0,
-            segments: [],
-            players: 0,
-            delay: 150
-        };
-
         this._grid = [];
         this._subgridBounds = null;
         this._width = 0;
+        this._height = 0;
 
         this._screenWidth = _configJson2['default'].screenWidth;
         this._screenHeight = _configJson2['default'].screenHeight;
@@ -53450,6 +53450,31 @@ var GameState = (function (_CoreState) {
 
         this._blocks = [];
         this._blockWidth = _configJson2['default'].blockWidth;
+
+        /**
+         * Player that is being controlled.
+         * @type {{id: number, index: number, direction: number}}
+         * @private
+         */
+        this._player = {
+            id: 0,
+            index: 0,
+            direction: 0
+        };
+
+        /**
+         * Players in the server.
+         * @type {Array.<{id: number, index: number, direction: number}>}
+         * @private
+         */
+        this._players = null;
+
+        /**
+         * True to set the game as running.
+         * @type {boolean}
+         * @private
+         */
+        this._isRunning = false;
 
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -53475,17 +53500,17 @@ var GameState = (function (_CoreState) {
     _createClass(GameState, [{
         key: '_delay',
         value: function _delay(fn) {
-            window.setTimeout(fn, this._debug.delay);
+            window.setTimeout(fn, debug.delay);
         }
     }, {
         key: 'onAdd',
         value: function onAdd() {
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'index', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'direction', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'isAlive', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'length', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'players', { listen: true });
-            _debugDebug2['default'].Globals.instance.addControl(this._debug, 'delay', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'index', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'direction', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'isAlive', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'length', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'players', { listen: true });
+            _debugDebug2['default'].Globals.instance.addControl(debug, 'delay', { listen: true });
 
             // Bind keys to hotkeys
             this._input.addHotkey(_coreInput2['default'].CharToKeyCode('W'), 'move-up');
@@ -53499,7 +53524,7 @@ var GameState = (function (_CoreState) {
         }
     }, {
         key: 'onEnter',
-        value: function onEnter() {
+        value: function onEnter(params) {
             var _this = this;
 
             console.log('entering game state');
@@ -53531,18 +53556,26 @@ var GameState = (function (_CoreState) {
                         _this._grid = data.grid;
                         _this._subgridBounds = data.subgridBounds;
                         _this._width = data.width;
-                        _this._debug.index = data.index;
-                        _this._debug.isAlive = data.isAlive;
-                        _this._debug.direction = data.direction;
-                        _this._debug.length = data.segments.length;
-                        _this._debug.segments = data.segments;
+                        _this._height = data.height;
+                        _this._player.id = data.id;
+                        _this._player.index = data.index;
+                        _this._player.direction = data.direction;
+                        _this._players = data.players;
+                        _this._isRunning = true;
+
+                        debug.players = data.players.length;
+                        debug.index = data.index;
+                        debug.isAlive = data.isAlive;
+                        debug.direction = data.direction;
+                        debug.length = data.segments.length;
+                        debug.segments = data.segments;
                     });
                 });
 
                 _this._socket.on('die', function (data) {
                     _this._delay(function () {
                         console.log('dead');
-                        _this._debug.isAlive = false;
+                        debug.isAlive = false;
                         _this.switcher.switchState(_this, _this.switcher.retrieveState('EndState'), null, {
                             score: data.score
                         });
@@ -53553,12 +53586,18 @@ var GameState = (function (_CoreState) {
                     _this._delay(function () {
                         _this._grid = data.grid;
                         _this._subgridBounds = data.subgridBounds;
-                        _this._debug.players = data.players;
-                        _this._debug.index = data.index;
-                        _this._debug.isAlive = data.isAlive;
-                        _this._debug.direction = data.direction;
-                        _this._debug.length = data.segments.length;
-                        _this._debug.segments = data.segments;
+                        _this._width = data.width;
+                        _this._player.id = data.id;
+                        _this._player.index = data.index;
+                        _this._player.direction = data.direction;
+                        _this._players = data.players;
+
+                        debug.players = data.players.length;
+                        debug.index = data.index;
+                        debug.isAlive = data.isAlive;
+                        debug.direction = data.direction;
+                        debug.length = data.segments.length;
+                        debug.segments = data.segments;
                     });
                 });
                 console.log('Connected!');
@@ -53568,8 +53607,6 @@ var GameState = (function (_CoreState) {
         key: '_checkKeys',
         value: function _checkKeys() {
             var _this2 = this;
-
-            if (!this._socket) return;
 
             var direction;
             if (this._input.keysJustDown['move-up']) {
@@ -53590,6 +53627,11 @@ var GameState = (function (_CoreState) {
                 });
             }
         }
+
+        /**
+         * Generate the display for rendering.
+         * @private
+         */
     }, {
         key: '_generateDisplay',
         value: function _generateDisplay() {
@@ -53598,6 +53640,9 @@ var GameState = (function (_CoreState) {
                 this._scene.display.removeChild(this._blocks[i]);
             }
             this._blocks = [];
+            var startX = this._subgridBounds.x1 * this._blockWidth;
+            var startY = this._subgridBounds.y1 * this._blockWidth;
+            var width = this._subgridBounds.x2 - this._subgridBounds.x1;
             for (i = 0; i < this._grid.length; i++) {
                 var block = null;
                 if (this._grid[i] === gridKey.blocked) {
@@ -53607,10 +53652,10 @@ var GameState = (function (_CoreState) {
                 }
 
                 if (block) {
-                    var col = i % (this._screenWidth + this._screenBuffer * 2);
-                    var row = Math.floor(i / (this._screenWidth + this._screenBuffer * 2));
-                    block.position.x = col * this._blockWidth;
-                    block.position.y = row * this._blockWidth;
+                    var col = i % width;
+                    var row = Math.floor(i / width);
+                    block.position.x = startX + col * this._blockWidth;
+                    block.position.y = startY + row * this._blockWidth;
                     this._blocks.push(block);
                     this._scene.display.addChild(block);
                 }
@@ -53619,11 +53664,24 @@ var GameState = (function (_CoreState) {
     }, {
         key: 'update',
         value: function update(dt) {
+            if (!this._isRunning) return;
+
             this._checkKeys();
 
-            //this._camera += 1;
-            this._camera.position.x = this._viewport.width / 2 + this._screenBuffer * 2 * this._blockWidth;
-            this._camera.position.y = this._viewport.height / 2 + this._screenBuffer * 2 * this._blockWidth;
+            // Center the camera on the player
+            this._camera.position.x = this._player.index % this._width * this._blockWidth;
+            this._camera.position.y = Math.floor(this._player.index / this._width) * this._blockWidth;
+            // Keep camera in bounds
+            if (this._camera.position.x < this._viewport.width / 2) {
+                this._camera.position.x = this._viewport.width / 2;
+            } else if (this._camera.position.x > this._width * this._blockWidth - this._viewport.width / 2) {
+                this._camera.position.x = this._width * this._blockWidth - this._viewport.width / 2;
+            }
+            if (this._camera.position.y < this._viewport.height / 2) {
+                this._camera.position.y = this._viewport.height / 2;
+            } else if (this._camera.position.y > this._height * this._blockWidth - this._viewport.height / 2) {
+                this._camera.position.y = this._height * this._blockWidth - this._viewport.height / 2;
+            }
 
             this._viewport.update();
 
@@ -53633,10 +53691,11 @@ var GameState = (function (_CoreState) {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving game state');
-            this._window.removeEventListener('keydown', this._keyDown);
+            this._isRunning = false;
 
             if (this._socket) {
                 this._socket.disconnect();
+                this._socket = null;
             }
 
             // Remove the displays
