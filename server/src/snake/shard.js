@@ -2,6 +2,7 @@
 var _ = require('lodash');
 var Grid = require('./grid');
 var Logger = require('../util/logger');
+var Player = require('./player');
 
 var internals = {
     commands: {
@@ -79,7 +80,7 @@ class Shard {
 
         /**
          * Players stored by socket key.
-         * @type {Object<String, {}>}
+         * @type {Object<String, Player>}
          * @private
          */
         this._players = {};
@@ -151,9 +152,12 @@ class Shard {
         return {
             players: this.playerCount,
             grid: grid,
-            snake: player.snake,
             tick: this._tick,
-            subgridBounds: subgridBounds
+            subgridBounds: subgridBounds,
+            segments: player.segments,
+            index: player.index,
+            isAlive: player.isAlive,
+            direction: player.direction
         };
     }
 
@@ -166,9 +170,8 @@ class Shard {
 
         // Move every snake in the shard
         _.forEach(this._players, (player) => {
-            var snake = player.snake;
-            if (snake.isAlive) {
-                this._move(player, snake.index, snake.direction);
+            if (player.isAlive) {
+                this._move(player);
             }
         });
 
@@ -183,9 +186,9 @@ class Shard {
 
         // Update the grid of every player
         _.forEach(this._players, (player) => {
-            if (player.snake.isAlive) {
-                var subgridBounds = this._grid.getSubgridBounds(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
-                var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+            if (player.isAlive) {
+                var subgridBounds = this._grid.getSubgridBounds(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+                var grid = this._grid.getGridArray(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
                 player.socket.emit(internals.commands.update, this._createPlayerInfo(player, grid, subgridBounds));
             }
         });
@@ -193,29 +196,28 @@ class Shard {
 
     /**
      * Move in the given direction.
-     * @param {*} player the player that is moving.
-     * @param {number} index the index to move from.
-     * @param {number} direction the direction to move.
+     * @param {Player} player the player that is moving.
      */
-    _move(player, index, direction) {
+    _move(player) {
         var grid = this._grid;
-        var snake = player.snake;
 
+        var index = player.index;
+        var direction = player.direction;
         // Check the value of the next move index
         var value = grid.getValueInDirection(index, direction);
         if (value < 0 || value === Grid.Keys.blocked) {
             this._die(player);
         } else if (value === Grid.Keys.empty || value === Grid.Keys.food) {
             // Add the previous head position to the front of the segment array
-            snake.segments.unshift(snake.index);
+            player.segments.unshift(player.index);
 
             // Get the value of the new head position
-            snake.index = grid.getIndexInDirection(index, direction);
+            player.index = grid.getIndexInDirection(index, direction);
             // Remove the tail if no food has been eaten
             if (value !== Grid.Keys.food) {
-                var removed = snake.segments.pop();
+                var removed = player.segments.pop();
                 // Do not empty if any segments are in the tail index
-                var anyLeft = snake.segments.indexOf(removed) >= 0;
+                var anyLeft = player.segments.indexOf(removed) >= 0;
                 if (!anyLeft) {
                     grid.setGridValue(removed, Grid.Keys.empty);
                 }
@@ -233,13 +235,13 @@ class Shard {
      * @private
      */
     _die(player) {
-        for (var i = 0; i < player.snake.segments.length; i++) {
-            this._grid.setGridValue(player.snake.segments[i], Grid.Keys.empty);
+        for (var i = 0; i < player.segments.length; i++) {
+            this._grid.setGridValue(player.segments[i], Grid.Keys.empty);
         }
-        this._grid.setGridValue(player.snake.index, Grid.Keys.empty);
-        player.snake.isAlive = false;
+        this._grid.setGridValue(player.index, Grid.Keys.empty);
+        player.isAlive = false;
         player.socket.emit(internals.commands.die, {
-            score: player.snake.segments.length
+            score: player.segments.length
         });
     }
 
@@ -250,27 +252,24 @@ class Shard {
      * @private
      */
     _start(player, snake) {
+        // Set the starting positions and segments for the snake
         if (snake) {
-            player.snake = {
-                index: snake.index,
-                direction: snake.direction,
-                segments: [].concat(snake.segments),
-                isAlive: snake.isAlive
-            };
+            player.index= snake.index;
+            player.direction = snake.direction;
+            player.segments = [].concat(snake.segments);
+            player.isAlive = snake.isAlive;
             this._grid.setGridValue(snake.index, Grid.Keys.blocked);
         } else {
             var start = internals.getStart(this._grid);
-            player.snake = {
-                index: start.index,
-                direction: start.direction,
-                segments: [start.index, start.index, start.index],
-                isAlive: true
-            };
+            player.index = start.index;
+            player.direction = start.direction;
+            player.segments = [start.index, start.index, start.index];
+            player.isAlive = true;
             this._grid.setGridValue(start.index, Grid.Keys.blocked);
         }
 
-        var subgridBounds = this._grid.getSubgridBounds(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
-        var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+        var subgridBounds = this._grid.getSubgridBounds(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+        var grid = this._grid.getGridArray(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
         player.socket.emit(internals.commands.start, this._createPlayerInfo(player, grid, subgridBounds));
     }
 
@@ -283,8 +282,8 @@ class Shard {
      */
     _isOppositeDirection(player, d1, d2) {
         // Check if trying to move into the previous segment (happens when moving too fast)
-        var next = this._grid.getIndexInDirection(player.snake.index, d1);
-        if (player.snake.segments.length > 0 && player.snake.segments[0] === next) {
+        var next = this._grid.getIndexInDirection(player.index, d1);
+        if (player.segments.length > 0 && player.segments[0] === next) {
             return true;
         }
         // Check if trying to move backwards
@@ -305,22 +304,20 @@ class Shard {
             this.removePlayer(player);
         } else {
             // Ignore if moving backwards
-            if (this._isOppositeDirection(player, direction, player.snake.direction)) {
+            if (this._isOppositeDirection(player, direction, player.direction)) {
                 return;
             }
-            player.snake.direction = direction;
+            player.direction = direction;
         }
     }
 
     /**
      * Adds a socket with an optional snake object to start as.
      * @param socket the socket to add.
-     * @param {*=} snake the snake to start as.
+     * @param {*=} snake the snake to start as, otherwise create new.
      */
     addSocket(socket, snake) {
-        var player = {
-            socket: socket
-        };
+        var player = new Player(socket);
         this._players[socket.id] = player;
 
         socket.on('error', () => {
@@ -341,7 +338,7 @@ class Shard {
             this._direct(player, data.direction);
         });
 
-        this._start(this._players[socket.id], snake);
+        this._start(player, snake);
     }
 
     removePlayer(id) {

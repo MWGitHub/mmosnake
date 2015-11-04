@@ -69,6 +69,7 @@ class GameState extends CoreState {
         };
 
         this._grid = [];
+        this._subgridBounds = null;
         this._width = 0;
 
         this._screenWidth = Config.screenWidth;
@@ -149,14 +150,14 @@ class GameState extends CoreState {
             this._socket.on('start', (data) => {
                 this._delay(() => {
                     console.log('start');
-                    var snake = data.snake;
                     this._grid = data.grid;
+                    this._subgridBounds = data.subgridBounds;
                     this._width = data.width;
-                    this._debug.index = snake.index;
-                    this._debug.isAlive = snake.isAlive;
-                    this._debug.direction = snake.direction;
-                    this._debug.length = snake.segments.length;
-                    this._debug.segments = snake.segments;
+                    this._debug.index = data.index;
+                    this._debug.isAlive = data.isAlive;
+                    this._debug.direction = data.direction;
+                    this._debug.length = data.segments.length;
+                    this._debug.segments = data.segments;
                 });
             });
 
@@ -172,14 +173,14 @@ class GameState extends CoreState {
 
             this._socket.on('update', (data) => {
                 this._delay(() => {
-                    var snake = data.snake;
                     this._grid = data.grid;
+                    this._subgridBounds = data.subgridBounds;
                     this._debug.players = data.players;
-                    this._debug.index = snake.index;
-                    this._debug.isAlive = snake.isAlive;
-                    this._debug.direction = snake.direction;
-                    this._debug.length = snake.segments.length;
-                    this._debug.segments = snake.segments;
+                    this._debug.index = data.index;
+                    this._debug.isAlive = data.isAlive;
+                    this._debug.direction = data.direction;
+                    this._debug.length = data.segments.length;
+                    this._debug.segments = data.segments;
                 });
             });
             console.log('Connected!');

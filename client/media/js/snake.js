@@ -53440,6 +53440,7 @@ var GameState = (function (_CoreState) {
         };
 
         this._grid = [];
+        this._subgridBounds = null;
         this._width = 0;
 
         this._screenWidth = _configJson2['default'].screenWidth;
@@ -53526,14 +53527,14 @@ var GameState = (function (_CoreState) {
                 _this._socket.on('start', function (data) {
                     _this._delay(function () {
                         console.log('start');
-                        var snake = data.snake;
                         _this._grid = data.grid;
+                        _this._subgridBounds = data.subgridBounds;
                         _this._width = data.width;
-                        _this._debug.index = snake.index;
-                        _this._debug.isAlive = snake.isAlive;
-                        _this._debug.direction = snake.direction;
-                        _this._debug.length = snake.segments.length;
-                        _this._debug.segments = snake.segments;
+                        _this._debug.index = data.index;
+                        _this._debug.isAlive = data.isAlive;
+                        _this._debug.direction = data.direction;
+                        _this._debug.length = data.segments.length;
+                        _this._debug.segments = data.segments;
                     });
                 });
 
@@ -53549,14 +53550,14 @@ var GameState = (function (_CoreState) {
 
                 _this._socket.on('update', function (data) {
                     _this._delay(function () {
-                        var snake = data.snake;
                         _this._grid = data.grid;
+                        _this._subgridBounds = data.subgridBounds;
                         _this._debug.players = data.players;
-                        _this._debug.index = snake.index;
-                        _this._debug.isAlive = snake.isAlive;
-                        _this._debug.direction = snake.direction;
-                        _this._debug.length = snake.segments.length;
-                        _this._debug.segments = snake.segments;
+                        _this._debug.index = data.index;
+                        _this._debug.isAlive = data.isAlive;
+                        _this._debug.direction = data.direction;
+                        _this._debug.length = data.segments.length;
+                        _this._debug.segments = data.segments;
                     });
                 });
                 console.log('Connected!');
