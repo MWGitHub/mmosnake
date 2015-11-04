@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import Debug from '../debug/debug';
 import _ from 'lodash';
 import Config from '../../config.json';
+import PIXI from 'pixi.js';
 
 var cardinal = {
     N: 1,
@@ -111,7 +112,7 @@ class BotState extends CoreState {
         this._numBots = 0;
         this._botRate = 0;
 
-        var text = new PIXI.Text('UP to add bots\nDOWN to remove bots\nLEFT to decrease auto bots\nRIGHT to increase auto bots', {
+        var text = new PIXI.Text('UP to add bots\nDOWN to remove bots\nLEFT to decrease bot rate\nRIGHT to increase bot rate', {
             font: 'bold 16px Arial',
             fill: "#FFFFFF"
         });

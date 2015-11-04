@@ -87,11 +87,57 @@ describe('grid', function() {
         var grid = new Grid(2, 2);
         assert.equal(grid.getGridValue(1), 0);
         grid.setGridValue(1, 1);
+        grid.setGridValue(2, 1);
         assert.equal(grid.getGridValue(1), 1);
+
+        // Test conversions
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(1, 0)), 1);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(0, 0)), 0);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(0, 1)), 1);
+        assert.equal(grid.getIndexAtCoordinates(1, -1), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(1, 3), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(-1, 0), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(2, 0), Grid.Outside);
+
 
         // Check out of bounds
         assert.throws(()=>grid.getGridValue(4));
         assert.throws(()=>grid.getGridValue(-1));
+
+        done();
+    });
+
+    it('converts from coordinates to index', function(done) {
+        var grid = new Grid(2, 2);
+        grid.setGridValue(1, 1);
+        grid.setGridValue(2, 1);
+
+        // Test conversions
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(1, 0)), 1);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(0, 0)), 0);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(0, 1)), 1);
+        assert.equal(grid.getIndexAtCoordinates(1, -1), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(1, 3), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(-1, 0), Grid.Outside);
+        assert.equal(grid.getIndexAtCoordinates(2, 0), Grid.Outside);
+
+        done();
+    });
+
+    it('converts from index to coordinates', function(done) {
+        var grid = new Grid(2, 2);
+        grid.setGridValue(1, 1);
+        grid.setGridValue(2, 1);
+
+        // Test conversions
+        var coord = grid.getCoordinatesAtIndex(0);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(coord.x, coord.y)), 0);
+        coord = grid.getCoordinatesAtIndex(2);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(coord.x, coord.y)), 1);
+        coord = grid.getCoordinatesAtIndex(3);
+        assert.equal(grid.getGridValue(grid.getIndexAtCoordinates(coord.x, coord.y)), 0);
+        assert.equal(grid.getCoordinatesAtIndex(-1), Grid.Outside);
+        assert.equal(grid.getCoordinatesAtIndex(4), Grid.Outside);
 
         done();
     });
@@ -154,6 +200,11 @@ describe('grid', function() {
     });
 
     it('retrieves a segment of the grid', function(done) {
+        // 1 1 1 1 1
+        // 1 0 0 0 1
+        // 1 0 0 0 1
+        // 1 0 0 0 1
+        // 1 1 1 1 1
         var grid = new Grid(5, 5, true);
         var full = grid.getGridArray();
         assert.equal(getBlockCount(full), 16, 'should contain all blocked');
@@ -182,6 +233,19 @@ describe('grid', function() {
 
         sub = grid.getGridArray(24, 3, 3);
         assert.equal(getBlockCount(sub), 5);
+
+        // Get sub grid with buffers
+        sub = grid.getGridArray(0, 3, 3, 1);
+        assert.equal(getBlockCount(sub), 16, 'should get full grid due to no edge checks');
+
+        sub = grid.getGridArray(0, 3, 3, -1);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(12, 3, 3, 0);
+        assert.equal(getBlockCount(sub), 0);
+
+        sub = grid.getGridArray(12, 3, 3, 1);
+        assert.equal(getBlockCount(sub), 16);
 
         done();
     });

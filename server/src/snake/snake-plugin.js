@@ -13,11 +13,12 @@ var snake = {
         var height = options.gridHeight || 20;
         var screenWidth = options.screenWidth || 20;
         var screenHeight = options.screenHeight || 20;
+        var screenBuffer = options.screenBuffer || 0;
         var food = options.food || 3;
         var tickRate = options.tickRate || 6;
 
         // Create a single shard instance for now
-        var shard = new SnakeShard(width, height, screenWidth, screenHeight);
+        var shard = new SnakeShard(width, height, screenWidth, screenHeight, screenBuffer);
         shard.foodLimit = food;
         io.on('connection', function(socket) {
             shard.addSocket(socket);

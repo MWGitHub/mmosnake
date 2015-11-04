@@ -1,11 +1,9 @@
-"use strict";
-
 import RenderLayer from '../core/render-layer';
 
 /**
- * Pixi rendering layer which will use WebGL.
+ * Pixi rendering layer.
  */
-class PixiRenderLayer extends RenderLayer {
+class Layer extends RenderLayer {
     /**
      * Creates a pixi renderer.
      * @param {HTMLElement} element the element to attach the renderer to.
@@ -22,12 +20,9 @@ class PixiRenderLayer extends RenderLayer {
 
         /**
          * Stage to add objects to.
-         * @type {PIXI.DisplayObjectContainer}
+         * @type {PIXI.DisplayObject}
          */
-        this.stage = new PIXI.Container();
-
-        // Add the renderer to the element.
-        //element.appendChild(this._renderer.view);
+        this._stage = new PIXI.Container();
     }
 
     /**
@@ -35,7 +30,7 @@ class PixiRenderLayer extends RenderLayer {
      * @param {number} dt the render step size.
      */
     render(dt) {
-        this._renderer.render(this.stage);
+        this._renderer.render(this._stage);
     }
 
     /**
@@ -52,7 +47,7 @@ class PixiRenderLayer extends RenderLayer {
      * @param child the child to add to the layer.
      */
     addChild(child) {
-        this.stage.addChild(child);
+        this._stage.addChild(child);
     }
 
     /**
@@ -60,11 +55,11 @@ class PixiRenderLayer extends RenderLayer {
      * @param child the child to remove from the layer.
      */
     removeChild(child) {
-        this.stage.removeChild(child);
+        this._stage.removeChild(child);
     }
 
     /**
-     * Retrieve the renderer.
+     * Retrieves the renderer.
      * @returns {PIXI.WebGLRenderer}
      */
     get renderer() {
@@ -73,4 +68,4 @@ class PixiRenderLayer extends RenderLayer {
 }
 
 
-export default PixiRenderLayer;
+export default Layer;

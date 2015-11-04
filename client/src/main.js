@@ -7,7 +7,7 @@ import GameState from './game/game-state';
 import EndState from './game/end-state';
 import BotState from './game/bot-state';
 import Debug from './debug/debug';
-import RenderLayer from './pixi/layer';
+import Layer from './pixi/layer';
 import Config from '../config.json';
 var CoreCallbacks = Core.Callbacks;
 
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var input = new Input(window, document.getElementById('game'));
 
     // Initialize and add the renderer
-    var layer = new RenderLayer(document.getElementById('game'));
+    var layer = new Layer(document.getElementById('game'));
     core.addRenderLayer(layer);
 
     // Create the state switcher and add the states
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
     var startState = new StartState(window, layer);
     stateSwitcher.addState(startState);
-    var gameState = new GameState(window, layer, input);
+    var gameState = new GameState(layer, input);
     stateSwitcher.addState(gameState);
     var endState = new EndState(window, layer);
     stateSwitcher.addState(endState);

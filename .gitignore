@@ -1,5 +1,5 @@
 .idea
-*/node_modules
+node_modules
 *.iml
 npm-debug.log
 client/config.json

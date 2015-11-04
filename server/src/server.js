@@ -22,6 +22,7 @@ internals.register = function(server) {
                     gridHeight: Config.gridHeight,
                     screenWidth: Config.screenWidth,
                     screenHeight: Config.screenHeight,
+                    screenBuffer: Config.screenBuffer,
                     food: Config.food,
                     tickRate: Config.tickRate
                 }

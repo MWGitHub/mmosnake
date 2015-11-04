@@ -4,6 +4,8 @@
   "gridHeight": 120,
   "screenWidth": 21,
   "screenHeight": 15,
+  "screenBuffer": 2,
   "food": 120,
-  "tickRate": 6
+  "tickRate": 6,
+  "leniency": 2
 }

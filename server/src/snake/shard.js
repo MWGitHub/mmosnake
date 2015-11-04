@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var _ = require('lodash');
 var Grid = require('./grid');
 var Logger = require('../util/logger');
@@ -47,8 +47,9 @@ class Shard {
      * @param {number} height the height to give the shard.
      * @param {number=} screenWidth the width of a game screen, defaults to width.
      * @param {number=} screenHeight the height of a game screen, defaults to height.
+     * @param {number=} screenBuffer the buffer for the sides of the screen.
      */
-    constructor(width, height, screenWidth, screenHeight) {
+    constructor(width, height, screenWidth, screenHeight, screenBuffer) {
         /**
          * Number of food available at any given time.
          * @type {number}
@@ -68,6 +69,13 @@ class Shard {
          * @private
          */
         this._screenHeight = screenHeight || height;
+
+        /**
+         * Buffer to add to the sides of the screen.
+         * @type {number}
+         * @private
+         */
+        this._screenBuffer = screenBuffer || 0;
 
         /**
          * Players stored by socket key.
@@ -96,6 +104,13 @@ class Shard {
          * @private
          */
         this._food = 0;
+
+        /**
+         * Current server tick.
+         * @type {number}
+         * @private
+         */
+        this._tick = 0;
     }
 
     /**
@@ -118,6 +133,9 @@ class Shard {
         this._interval = setInterval(this._update.bind(this), 1000 / this._tickRate);
     }
 
+    /**
+     * Manually step through an update.
+     */
     tick() {
         this._update();
     }
@@ -129,11 +147,23 @@ class Shard {
         clearInterval(this._interval);
     }
 
+    _createPlayerInfo(player, grid, subgridBounds) {
+        return {
+            players: this.playerCount,
+            grid: grid,
+            snake: player.snake,
+            tick: this._tick,
+            subgridBounds: subgridBounds
+        };
+    }
+
     /**
      * Updates the movement of the snakes.
      * @private
      */
     _update() {
+        this._tick++;
+
         // Move every snake in the shard
         _.forEach(this._players, (player) => {
             var snake = player.snake;
@@ -152,15 +182,11 @@ class Shard {
         }
 
         // Update the grid of every player
-        var players = this.playerCount;
         _.forEach(this._players, (player) => {
             if (player.snake.isAlive) {
-                var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight);
-                player.socket.emit(internals.commands.update, {
-                    players: players,
-                    grid: grid,
-                    snake: player.snake
-                });
+                var subgridBounds = this._grid.getSubgridBounds(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+                var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+                player.socket.emit(internals.commands.update, this._createPlayerInfo(player, grid, subgridBounds));
             }
         });
     }
@@ -199,7 +225,7 @@ class Shard {
             // Make the current head position an occupied space
             grid.setValueInDirection(index, direction, Grid.Keys.blocked);
         }
-    };
+    }
 
     /**
      * Remove the player's snake and set them as dead.
@@ -243,12 +269,9 @@ class Shard {
             this._grid.setGridValue(start.index, Grid.Keys.blocked);
         }
 
-        player.socket.emit(internals.commands.start, {
-            grid: this.getGridArray(player.snake.index, this._screenWidth, this._screenHeight),
-            players: this.playerCount,
-            width: this._grid.width,
-            snake: player.snake
-        });
+        var subgridBounds = this._grid.getSubgridBounds(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+        var grid = this._grid.getGridArray(player.snake.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+        player.socket.emit(internals.commands.start, this._createPlayerInfo(player, grid, subgridBounds));
     }
 
     /**

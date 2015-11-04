@@ -1,5 +1,6 @@
 "use strict";
 import CoreState from '../core/core-state';
+import PIXI from 'pixi.js';
 
 class EndState extends CoreState {
     /**

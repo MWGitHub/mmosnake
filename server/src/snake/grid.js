@@ -1,8 +1,13 @@
-"use strict";
+'use strict';
 
 var _ = require('lodash');
 
 var internals = {
+    /**
+     * Number representing a coordinate outside the grid.
+     */
+    outside: Number.MIN_SAFE_INTEGER,
+
     /**
      * Keys for the grid.
      */
@@ -49,6 +54,34 @@ class Grid {
             }
             this._grid.push(value);
         }
+    }
+
+    /**
+     * Retrieves the index at the given coordinates.
+     * @param {Number} x the x location.
+     * @param {Number} y the y location.
+     * @returns {Number} the index or the outside number if outside the grid.
+     */
+    getIndexAtCoordinates(x, y) {
+        if (x < 0 || x >= this._width || y < 0 || y >= this._height) {
+            return internals.outside;
+        }
+        return y * this._width + x;
+    }
+
+    /**
+     * Retrieves the coordinates given an index.
+     * @param {Number} index the index.
+     * @returns {Number|{x: Number, y: Number}} the x and y coordinates or outside number.
+     */
+    getCoordinatesAtIndex(index) {
+        if (index < 0 || index >= this._width * this._height) {
+            return internals.outside;
+        }
+        return {
+            x: index % this._width,
+            y: Math.floor(index / this._width)
+        };
     }
 
     /**
@@ -166,43 +199,83 @@ class Grid {
     }
 
     /**
+     * Retrieves the subgrid bounds given a center index.
+     * @param {number} index the index to center the bounds at.
+     * @param {number} width the width of the sub grid.
+     * @param {number} height the height of the sub grid.
+     * @param {number} buffer the buffer to apply to all sides, must be positive.
+     * @returns {{x1: number, y1: number, x2: number, y2: number}}
+     */
+    getSubgridBounds(index, width, height, buffer) {
+        // Offset the index by the buffer amount
+        var buff = buffer > 0 ? buffer : 0;
+        var bufferIndex = index;
+        if (buff > 0) {
+            var coords = this.getCoordinatesAtIndex(index);
+            coords.x -= buff;
+            coords.y -= buff;
+            if (coords.x < 0) {
+                coords.x = 0;
+            }
+            if (coords.y < 0) {
+                coords.y = 0;
+            }
+            bufferIndex = this.getIndexAtCoordinates(coords.x, coords.y);
+        }
+
+        // Offset the width and height by the buffer amount
+        var bufferWidth = width + buff * 2;
+        var bufferHeight = height + buff * 2;
+
+        var x = 0;
+        var y = 0;
+        // Check if left and right side is out of bounds and recenter
+        var left = bufferIndex % this._width  - Math.floor(bufferWidth / 2);
+        var right = bufferIndex % this._width + Math.floor(bufferWidth / 2);
+        if (left < 0) {
+            x = 0;
+        } else if (right >= this._width) {
+            x = this._width - bufferWidth;
+        } else {
+            x = bufferIndex % this._width - Math.floor(bufferWidth / 2);
+        }
+        // Check if top and bottom is out of bounds and recenter
+        var top = Math.floor(bufferIndex / this._width) - Math.floor(bufferHeight / 2);
+        var bottom = Math.floor(bufferIndex / this._width) + Math.floor(bufferHeight / 2);
+        if (top < 0) {
+            y = 0;
+        } else if (bottom >= this._height) {
+            y = this._height - bufferHeight;
+        } else {
+            y = Math.floor(bufferIndex / this._width) - Math.floor(bufferHeight / 2);
+        }
+
+        return {
+            x1: x,
+            y1: y,
+            x2: x + bufferWidth,
+            y2: y + bufferHeight
+        };
+    }
+
+    /**
      * Get a copy of the grid.
      * @param {number=} index the centered index to retrieve from.
      * @param {number=} width the width of the grid to retrieve.
      * @param {number=} height the height of the grid to retrieve.
+     * @param {number=} buffer the buffer amount on each side to add.
      * @returns {Array.<number>}
      */
-    getGridArray(index, width, height) {
-        if (index !== undefined && width !== undefined && height !== undefined) {
-            var out = [];
-            var x = 0;
-            var y = 0;
-            // Check if left and right side is out of bounds and recenter
-            var left = index % this._width  - Math.floor(width / 2);
-            var right = index % this._width + Math.floor(width / 2);
-            if (left < 0) {
-                x = 0;
-            } else if (right >= this._width) {
-                x = this._width - width;
-            } else {
-                x = index % this._width - Math.floor(width / 2);
-            }
-            // Check if top and bottom is out of bounds and recenter
-            var top = Math.floor(index / this._width) - Math.floor(height / 2);
-            var bottom = Math.floor(index / this._width) + Math.floor(height / 2);
-            if (top < 0) {
-                y = 0;
-            } else if (bottom >= this._height) {
-                y = this._height - height;
-            } else {
-                y = Math.floor(index / this._width) - Math.floor(height / 2);
-            }
+    getGridArray(index, width, height, buffer) {
+        if (index != null && width != null && height != null) {
+            var bounds = this.getSubgridBounds(index, width, height, buffer);
 
             // Create the sub grid
-            for (var row = y; row < y + height; row++) {
-               for (var col = x; col < x + width; col++) {
-                   out.push(this._grid[row * this._width + col]);
-               }
+            var out = [];
+            for (var row = bounds.y1; row < bounds.y2; row++) {
+                for (var col = bounds.x1; col < bounds.x2; col++) {
+                    out.push(this._grid[row * this._width + col]);
+                }
             }
             return out;
         } else {
@@ -229,5 +302,6 @@ class Grid {
 
 Grid.Keys = Object.assign({}, internals.keys);
 Grid.Cardinal = Object.assign({}, internals.cardinal);
+Grid.Outside = internals.outside;
 
 module.exports = Grid;
