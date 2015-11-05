@@ -163,6 +163,21 @@ describe('grid', function() {
         done();
     });
 
+    it('merges grids together', function(done) {
+        var grid = new Grid(2, 2);
+        grid.setGridValue(0, 0, 1);
+        var grid2 = new Grid(2, 2);
+        grid.setGridValue(1, 1, 1);
+        var merged = grid.merge(grid2);
+        assert.equal(merged.getGridValue(0, 0), 1);
+        assert.equal(merged.getGridValue(0, 1), 0);
+        assert.equal(merged.getGridValue(1, 0), 0);
+        assert.equal(merged.getGridValue(1, 1), 1);
+        assert.equal(getBlockCount(merged.getGridArray()), 2);
+
+        done();
+    });
+
     it('retrieves a segment of the grid', function(done) {
         // 1 1 1 1 1
         // 1 0 0 0 1

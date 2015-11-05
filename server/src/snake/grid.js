@@ -67,7 +67,7 @@ class Grid {
         var empty = [];
         for (var row = 0; row < this._grid.length; row++) {
             for (var col = 0; col < this._grid[row].length; col++) {
-                if (this._grid[row][col] === 0) {
+                if (this._grid[row][col] === this._emptyIndex) {
                     empty.push({x: col, y: row});
                 }
             }
@@ -286,15 +286,19 @@ class Grid {
     }
 
     /**
-     * Merges the given array and this grid into a new grid.
-     * @param {Array.<number>} array the array to merge.
+     * Merges the given grid and this grid into a new one.
+     * @param {Grid} grid the grid to merge.
      * @returns {Grid} a new grid with this and an array merged.
      */
-    merge(array) {
+    merge(grid) {
         var newGrid = new Grid(this.width, this.height, false);
-        for (var i = 0; i < array.length; i++) {
-            if (array[i] !== 0) {
-                newGrid._grid[i] = array[i];
+        for (var i = 0; i < grid._grid.length; i++) {
+            for (var j = 0; j < grid._grid[i].length; j++) {
+                if (grid._grid[i][j] !== 0) {
+                    newGrid._grid[i][j] = grid._grid[i][j];
+                } else if (this._grid[i][j] !== 0) {
+                    newGrid._grid[i][j] = this._grid[i][j]
+                }
             }
         }
         return newGrid;
