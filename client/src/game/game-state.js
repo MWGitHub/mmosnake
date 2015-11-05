@@ -135,7 +135,7 @@ class GameState extends CoreState {
         this._timer = new Timer(1000 / this._tickRate);
 
         /**
-         * Queued update data, flushed between
+         * Queued update data, flushed between updates
          * @type {Array}
          * @private
          */
@@ -259,24 +259,7 @@ class GameState extends CoreState {
 
             this._socket.on(receives.update, (data) => {
                 this._delay(() => {
-                    var previousTick = this._tick;
-                    this._grid = data.grid;
-                    this._subgridBounds = data.subgridBounds;
-                    this._players = data.players;
-                    this._tick = data.tick;
-
-                    // Override client player if last update was too long ago or is forced
-                    if (data.isForced || this._tick - previousTick > this._leniency) {
-                        this._player.index = data.index;
-                        this._player.segments = data.segments;
-                    }
-
-                    debug.players = data.players.length;
-                    debug.index = data.index;
-                    debug.isAlive = data.isAlive;
-                    debug.direction = data.direction;
-                    debug.length = data.segments.length;
-                    debug.segments = data.segments;
+                    this._queuedData.push(data);
                 });
             });
 
@@ -295,6 +278,52 @@ class GameState extends CoreState {
         });
     }
 
+    /**
+     * Update the game with the most recent received data.
+     * @private
+     */
+    _updateData() {
+        if (this._queuedData.length === 0) {
+            return;
+        }
+
+        // Only use the most recent data
+        var mostRecent = 0;
+        var data;
+        for (var i = 0; i < this._queuedData.length; i++) {
+            if (mostRecent < this._queuedData[i].tick) {
+                mostRecent = this._queuedData[i].tick;
+                data = this._queuedData[i];
+            }
+        }
+
+        var previousTick = this._tick;
+        this._grid = data.grid;
+        this._subgridBounds = data.subgridBounds;
+        this._players = data.players;
+        this._tick = data.tick;
+
+        // Override client player if last update was too long ago or is forced
+        if (data.isForced || this._tick - previousTick > this._leniency) {
+            console.log('forced');
+            this._player.index = data.index;
+            this._player.segments = data.segments;
+        }
+
+        debug.players = data.players.length;
+        debug.index = data.index;
+        debug.isAlive = data.isAlive;
+        debug.direction = data.direction;
+        debug.length = data.segments.length;
+        debug.segments = data.segments;
+
+        this._queuedData = [];
+    }
+
+    /**
+     * Check if player direction should change.
+     * @private
+     */
     _checkKeys() {
         var direction;
         if (this._input.keysJustDown['move-up']) {
@@ -310,16 +339,19 @@ class GameState extends CoreState {
             direction = cardinal.W;
         }
         if (direction) {
-            this._player.direction = direction;
-            this._delay(() => {
-                if (!this._socket) return;
-                this._socket.emit(commands.direct, {
-                    tick: this._tick,
-                    index: this._player.index,
-                    segments: this._player.segments,
-                    direction: direction
+            // Prevent moving in the opposite direction
+            if (Math.abs(this._player.direction - direction) !== 2) {
+                this._player.direction = direction;
+                this._delay(() => {
+                    if (!this._socket) return;
+                    this._socket.emit(commands.direct, {
+                        tick: this._tick,
+                        index: this._player.index,
+                        segments: this._player.segments,
+                        direction: direction
+                    });
                 });
-            });
+            }
         }
     }
 
@@ -386,12 +418,15 @@ class GameState extends CoreState {
         // Generate graphics for the players
         for (i = 0; i < this._players.length; i++) {
             var player = this._players[i];
+            // Player renders more often than other players
             if (player.id === this._player.id) {
-                this._renderPlayer(player, true);
+                continue;
             } else {
                 this._renderPlayer(player, false);
             }
         }
+        // Render player separate due to updating locally
+        this._renderPlayer(this._player, true);
     }
 
     /**
@@ -424,7 +459,6 @@ class GameState extends CoreState {
      * @private
      */
     _simulate() {
-        /*
         var index = this._player.index;
 
         var x = index % this._width;
@@ -455,6 +489,7 @@ class GameState extends CoreState {
         }
 
         // Update the segments and head
+        /*
         this._player.segments.unshift(index);
         this._player.index = y * this._width + x;
         this._player.segments.pop();
@@ -475,6 +510,7 @@ class GameState extends CoreState {
         if (!this._isRunning) return;
         this._timer.update(dt);
 
+        this._updateData();
         this._checkKeys();
 
         // Simulate a tick if a tick has passed

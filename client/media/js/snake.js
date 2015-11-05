@@ -4,7 +4,7 @@ module.exports={
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
-  "leniency": 2,
+  "leniency": 10,
   "blockWidth": 16,
   "tickRate": 6
 }
@@ -53511,7 +53511,7 @@ var GameState = (function (_CoreState) {
         this._timer = new _utilTimer2['default'](1000 / this._tickRate);
 
         /**
-         * Queued update data, flushed between
+         * Queued update data, flushed between updates
          * @type {Array}
          * @private
          */
@@ -53641,24 +53641,7 @@ var GameState = (function (_CoreState) {
 
                 _this._socket.on(receives.update, function (data) {
                     _this._delay(function () {
-                        var previousTick = _this._tick;
-                        _this._grid = data.grid;
-                        _this._subgridBounds = data.subgridBounds;
-                        _this._players = data.players;
-                        _this._tick = data.tick;
-
-                        // Override client player if last update was too long ago or is forced
-                        if (data.isForced || _this._tick - previousTick > _this._leniency) {
-                            _this._player.index = data.index;
-                            _this._player.segments = data.segments;
-                        }
-
-                        debug.players = data.players.length;
-                        debug.index = data.index;
-                        debug.isAlive = data.isAlive;
-                        debug.direction = data.direction;
-                        debug.length = data.segments.length;
-                        debug.segments = data.segments;
+                        _this._queuedData.push(data);
                     });
                 });
 
@@ -53676,6 +53659,55 @@ var GameState = (function (_CoreState) {
                 console.log('Connected!');
             });
         }
+
+        /**
+         * Update the game with the most recent received data.
+         * @private
+         */
+    }, {
+        key: '_updateData',
+        value: function _updateData() {
+            if (this._queuedData.length === 0) {
+                return;
+            }
+
+            // Only use the most recent data
+            var mostRecent = 0;
+            var data;
+            for (var i = 0; i < this._queuedData.length; i++) {
+                if (mostRecent < this._queuedData[i].tick) {
+                    mostRecent = this._queuedData[i].tick;
+                    data = this._queuedData[i];
+                }
+            }
+
+            var previousTick = this._tick;
+            this._grid = data.grid;
+            this._subgridBounds = data.subgridBounds;
+            this._players = data.players;
+            this._tick = data.tick;
+
+            // Override client player if last update was too long ago or is forced
+            if (data.isForced || this._tick - previousTick > this._leniency) {
+                console.log('forced');
+                this._player.index = data.index;
+                this._player.segments = data.segments;
+            }
+
+            debug.players = data.players.length;
+            debug.index = data.index;
+            debug.isAlive = data.isAlive;
+            debug.direction = data.direction;
+            debug.length = data.segments.length;
+            debug.segments = data.segments;
+
+            this._queuedData = [];
+        }
+
+        /**
+         * Check if player direction should change.
+         * @private
+         */
     }, {
         key: '_checkKeys',
         value: function _checkKeys() {
@@ -53695,16 +53727,19 @@ var GameState = (function (_CoreState) {
                 direction = cardinal.W;
             }
             if (direction) {
-                this._player.direction = direction;
-                this._delay(function () {
-                    if (!_this2._socket) return;
-                    _this2._socket.emit(commands.direct, {
-                        tick: _this2._tick,
-                        index: _this2._player.index,
-                        segments: _this2._player.segments,
-                        direction: direction
+                // Prevent moving in the opposite direction
+                if (Math.abs(this._player.direction - direction) !== 2) {
+                    this._player.direction = direction;
+                    this._delay(function () {
+                        if (!_this2._socket) return;
+                        _this2._socket.emit(commands.direct, {
+                            tick: _this2._tick,
+                            index: _this2._player.index,
+                            segments: _this2._player.segments,
+                            direction: direction
+                        });
                     });
-                });
+                }
             }
         }
 
@@ -53775,12 +53810,15 @@ var GameState = (function (_CoreState) {
             // Generate graphics for the players
             for (i = 0; i < this._players.length; i++) {
                 var player = this._players[i];
+                // Player renders more often than other players
                 if (player.id === this._player.id) {
-                    this._renderPlayer(player, true);
+                    continue;
                 } else {
                     this._renderPlayer(player, false);
                 }
             }
+            // Render player separate due to updating locally
+            this._renderPlayer(this._player, true);
         }
 
         /**
@@ -53819,9 +53857,9 @@ var GameState = (function (_CoreState) {
         value: function _simulate() {
             var _this3 = this;
 
-            /*
             var index = this._player.index;
-             var x = index % this._width;
+
+            var x = index % this._width;
             var y = Math.floor(index / this._width);
             switch (this._player.direction) {
                 case cardinal.N:
@@ -53847,7 +53885,9 @@ var GameState = (function (_CoreState) {
             } else if (y >= this._height) {
                 y = this._height - 1;
             }
-             // Update the segments and head
+
+            // Update the segments and head
+            /*
             this._player.segments.unshift(index);
             this._player.index = y * this._width + x;
             this._player.segments.pop();
@@ -53869,6 +53909,7 @@ var GameState = (function (_CoreState) {
             if (!this._isRunning) return;
             this._timer.update(dt);
 
+            this._updateData();
             this._checkKeys();
 
             // Simulate a tick if a tick has passed

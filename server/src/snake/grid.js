@@ -273,6 +273,21 @@ class Grid {
     }
 
     /**
+     * Merges the given array and this grid into a new grid.
+     * @param {Array.<number>} array the array to merge.
+     * @returns {Grid} a new grid with this and an array merged.
+     */
+    merge(array) {
+        var newGrid = new Grid(this.width, this.height, false);
+        for (var i = 0; i < array.length; i++) {
+            if (array[i] !== 0) {
+                newGrid._grid[i] = array[i];
+            }
+        }
+        return newGrid;
+    }
+
+    /**
      * Retrieve the width of the grid.
      * @returns {number}
      */

@@ -33,17 +33,42 @@ internals.getStart = function(grid) {
 
 /**
  * Create food at a random spot.
- * @param {Grid} grid the grid to create the food on.
+ * @param {Grid} grid the grid to create the food in.
+ * @param {Grid} blockers the grid to use to get the empty space from.
  * @returns {boolean} true if food created successfully.
  */
-internals.createFood = function(grid) {
-    var empty = grid.getRandomEmptySpace();
+internals.createFood = function(grid, blockers) {
+    var empty = blockers.getRandomEmptySpace();
     if (empty >= 0) {
         grid.setGridValue(empty, Grid.Keys.food);
         return true;
     }
 
     return false;
+};
+
+/**
+ * Creates an array with blocking objects.
+ * @param {number} width the width of the grid.
+ * @param {number} height the height of the grid.
+ * @param players the players to set blocking areas.
+ */
+internals.createBlockersArray = function(width, height, players) {
+    var array = [];
+    var i;
+    for (i = 0; i < width * height; i++) {
+        array.push(0);
+    }
+    for (var key in players) {
+        if (!players.hasOwnProperty(key)) continue;
+        var player = players[key];
+
+        array[player.index] = Grid.Keys.snake;
+        for (i = 0; i < player.segments.length; i++) {
+            array[player.segments[i]] = Grid.Keys.snake;
+        }
+    }
+    return array;
 };
 
 class Shard {
@@ -131,8 +156,10 @@ class Shard {
      */
     setup() {
         // Create the initial food
+        var blockers =internals.createBlockersArray(this._grid.width, this._grid.height, this._players);
+        console.log(blockers);
         for (var i = 0; i < this.foodLimit; i++) {
-            var created = internals.createFood(this._grid);
+            var created = internals.createFood(this._grid, this._grid.merge(blockers));
             if (created) {
                 this._food++;
             }
@@ -273,17 +300,19 @@ class Shard {
             if (value !== Grid.Keys.food) {
                 var removed = player.segments.pop();
                 // Do not empty if any segments are in the tail index
+                /*
                 var anyLeft = player.segments.indexOf(removed) >= 0;
                 if (!anyLeft) {
                     grid.setGridValue(removed, Grid.Keys.empty);
                 }
+                */
             } else {
                 this._food -= 1;
                 // Update the player so the client knows food has been eaten
                 player.socket.emit(internals.commands.ate, this._createPlayerInfo(player, true));
             }
             // Make the current head position an occupied space to prevent food spawn there
-            grid.setValueInDirection(index, direction, Grid.Keys.snake);
+            //grid.setValueInDirection(index, direction, Grid.Keys.snake);
         }
     }
 
@@ -302,9 +331,10 @@ class Shard {
         });
 
         // Regenerate food that was eaten or blocked
+        var blockers = this._grid.merge(internals.createBlockersArray(this._grid.width, this._grid.height, this._players));
         var diff = this.foodLimit - this._food;
         for (var i = 0; i < diff; i++) {
-            var created = internals.createFood(this._grid);
+            var created = internals.createFood(this._grid, blockers);
             if (created) {
                 this._food++;
             }
@@ -331,7 +361,9 @@ class Shard {
             player.isAlive = snake.isAlive;
             this._grid.setGridValue(snake.index, Grid.Keys.snake);
         } else {
-            var start = internals.getStart(this._grid);
+            // Retrieve an empty starting position
+            var blockers = internals.createBlockersArray(this._grid.width, this._grid.height, this._players);
+            var start = internals.getStart(this._grid.merge(blockers));
             player.index = start.index;
             player.direction = start.direction;
             player.segments = [start.index, start.index, start.index];
@@ -376,14 +408,23 @@ class Shard {
         if (!_.includes(Grid.Cardinal, direction)) {
             console.log('invalid');
             this.removePlayer(player);
+        } else if (player.index === index) {
+            // Only change directions if the player has not moved
+            console.log('direction changed');
+            player.direction = direction;
         } else {
             // Check if player position differs too much from the server position
             var serverCoords = this._grid.getCoordinatesAtIndex(player.index);
             var clientCoords = this._grid.getCoordinatesAtIndex(index);
             var distance = Math.pow(serverCoords.x - clientCoords.x, 2) + Math.pow(serverCoords.y - clientCoords.y, 2);
-            var isOutOfSync = this._tick - tick > this._leniency || distance > this._leniency * this._leniency;
-            if (isOutOfSync) {
-                console.log('oos');
+            var isOutOfSync = this._tick - tick > this._leniency;
+            var isTooFar = distance > this._leniency * this._leniency;
+            if (isOutOfSync || isTooFar) {
+                if (isOutOfSync) {
+                    console.log('oos');
+                } else if (isTooFar) {
+                    console.log('too far');
+                }
                 // Ignore new direction if moving backwards
                 if (!this._isOppositeDirection(player, direction, player.direction)) {
                     player.direction = direction;
@@ -391,15 +432,12 @@ class Shard {
                 player.socket.emit(internals.commands.update, this._createPlayerInfo(player, true));
             } else {
                 player.direction = direction;
-                /*
-                console.log(index);
+
                 console.log('moved');
                 // Only update if the player has moved
                 player.lastUpdateTick = tick;
                 player.index = index;
-                player.direction = direction;
                 player.segments = segments;
-                */
             }
         }
     }
