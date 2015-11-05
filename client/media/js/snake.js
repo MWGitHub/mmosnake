@@ -53398,6 +53398,16 @@ var debug = {
     delay: 150
 };
 
+var commands = {
+    direct: 'direct'
+};
+
+var receives = {
+    start: 'start',
+    update: 'update',
+    die: 'die'
+};
+
 var GameState = (function (_CoreState) {
     _inherits(GameState, _CoreState);
 
@@ -53559,7 +53569,7 @@ var GameState = (function (_CoreState) {
                     console.log('Reconnected!');
                 });
 
-                _this._socket.on('start', function (data) {
+                _this._socket.on(receives.start, function (data) {
                     _this._delay(function () {
                         console.log('start');
                         _this._grid = data.grid;
@@ -53586,7 +53596,7 @@ var GameState = (function (_CoreState) {
                     });
                 });
 
-                _this._socket.on('die', function (data) {
+                _this._socket.on(receives.die, function (data) {
                     _this._delay(function () {
                         console.log('dead');
                         debug.isAlive = false;
@@ -53596,7 +53606,7 @@ var GameState = (function (_CoreState) {
                     });
                 });
 
-                _this._socket.on('update', function (data) {
+                _this._socket.on(receives.update, function (data) {
                     _this._delay(function () {
                         _this._grid = data.grid;
                         _this._subgridBounds = data.subgridBounds;
@@ -53637,7 +53647,7 @@ var GameState = (function (_CoreState) {
             }
             if (direction) {
                 this._delay(function () {
-                    _this2._socket.emit('direct', { direction: direction });
+                    _this2._socket.emit(commands.direct, { direction: direction });
                 });
             }
         }
@@ -53650,6 +53660,7 @@ var GameState = (function (_CoreState) {
         key: '_generateDisplay',
         value: function _generateDisplay() {
             var i;
+
             for (i = 0; i < this._blocks.length; i++) {
                 this._scene.display.removeChild(this._blocks[i]);
             }

@@ -9,8 +9,11 @@ var internals = {
         start: 'start',
         die: 'die',
         update: 'update',
-        direct: 'direct',
         restart: 'restart'
+    },
+
+    receives: {
+        direct: 'direct'
     }
 };
 
@@ -350,7 +353,7 @@ class Shard {
             this._start(player);
         });
 
-        socket.on(internals.commands.direct, (data) => {
+        socket.on(internals.receives.direct, (data) => {
             this._direct(player, data.direction);
         });
 

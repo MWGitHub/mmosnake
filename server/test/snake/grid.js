@@ -238,6 +238,15 @@ describe('grid', function() {
         sub = grid.getGridArray(0, 3, 3, 1);
         assert.equal(getBlockCount(sub), 16, 'should get full grid due to no edge checks');
 
+        sub = grid.getGridArray(0, 1, 1, 1);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(2, 1, 1, 1);
+        assert.equal(getBlockCount(sub), 3);
+
+        sub = grid.getGridArray(2, 1, 1, 2);
+        assert.equal(getBlockCount(sub), 16);
+
         sub = grid.getGridArray(0, 3, 3, -1);
         assert.equal(getBlockCount(sub), 5);
 

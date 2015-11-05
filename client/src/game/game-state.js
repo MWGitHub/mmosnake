@@ -31,6 +31,16 @@ var debug = {
     delay: 150
 };
 
+var commands = {
+    direct: 'direct'
+};
+
+var receives = {
+    start: 'start',
+    update: 'update',
+    die: 'die'
+};
+
 class GameState extends CoreState {
     /**
      * Creates the game state.
@@ -181,7 +191,7 @@ class GameState extends CoreState {
                 console.log('Reconnected!');
             });
 
-            this._socket.on('start', (data) => {
+            this._socket.on(receives.start, (data) => {
                 this._delay(() => {
                     console.log('start');
                     this._grid = data.grid;
@@ -208,7 +218,7 @@ class GameState extends CoreState {
                 });
             });
 
-            this._socket.on('die', (data) => {
+            this._socket.on(receives.die, (data) => {
                 this._delay(() => {
                     console.log('dead');
                     debug.isAlive = false;
@@ -218,7 +228,7 @@ class GameState extends CoreState {
                 });
             });
 
-            this._socket.on('update', (data) => {
+            this._socket.on(receives.update, (data) => {
                 this._delay(() => {
                     this._grid = data.grid;
                     this._subgridBounds = data.subgridBounds;
@@ -256,7 +266,7 @@ class GameState extends CoreState {
         }
         if (direction) {
             this._delay(() => {
-                this._socket.emit('direct', {direction: direction});
+                this._socket.emit(commands.direct, {direction: direction});
             });
         }
     }

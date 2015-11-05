@@ -123,7 +123,7 @@ describe('shard', function() {
         var countBlocks = function(grid) {
             var count = 0;
             for (var i = 0; i < grid.length; i++) {
-                if (grid[i] === Grid.Keys.blocked) {
+                if (grid[i] === Grid.Keys.blocked || grid[i] === Grid.Keys.snake) {
                     count++;
                 }
             }

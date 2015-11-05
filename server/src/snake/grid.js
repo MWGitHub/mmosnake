@@ -211,45 +211,32 @@ class Grid {
     getSubgridBounds(index, width, height, buffer) {
         // Offset the index by the buffer amount
         var buff = buffer > 0 ? buffer : 0;
-        var bufferIndex = index;
-        if (buff > 0) {
-            var coords = this.getCoordinatesAtIndex(index);
-            coords.x -= buff;
-            coords.y -= buff;
-            if (coords.x < 0) {
-                coords.x = 0;
-            }
-            if (coords.y < 0) {
-                coords.y = 0;
-            }
-            bufferIndex = this.getIndexAtCoordinates(coords.x, coords.y);
-        }
 
-        // Offset the width and height by the buffer amount
+        // Add the buffer amount to the width and height
         var bufferWidth = width + buff * 2;
         var bufferHeight = height + buff * 2;
 
         var x = 0;
         var y = 0;
         // Check if left and right side is out of bounds and recenter
-        var left = bufferIndex % this._width  - Math.floor(bufferWidth / 2);
-        var right = bufferIndex % this._width + Math.floor(bufferWidth / 2);
+        var left = index % this._width - Math.floor(bufferWidth / 2);
+        var right = index % this._width + Math.floor(bufferWidth / 2);
         if (left < 0) {
             x = 0;
         } else if (right >= this._width) {
             x = this._width - bufferWidth;
         } else {
-            x = bufferIndex % this._width - Math.floor(bufferWidth / 2);
+            x = index % this._width - Math.floor(bufferWidth / 2);
         }
         // Check if top and bottom is out of bounds and recenter
-        var top = Math.floor(bufferIndex / this._width) - Math.floor(bufferHeight / 2);
-        var bottom = Math.floor(bufferIndex / this._width) + Math.floor(bufferHeight / 2);
+        var top = Math.floor(index / this._width) - Math.floor(bufferHeight / 2);
+        var bottom = Math.floor(index / this._width) + Math.floor(bufferHeight / 2);
         if (top < 0) {
             y = 0;
         } else if (bottom >= this._height) {
             y = this._height - bufferHeight;
         } else {
-            y = Math.floor(bufferIndex / this._width) - Math.floor(bufferHeight / 2);
+            y = Math.floor(index / this._width) - Math.floor(bufferHeight / 2);
         }
 
         return {
