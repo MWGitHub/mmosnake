@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Create the core to update the main loop
     var core = new Core(window);
-    core.updateStepSize = 1000 / 15;
-    core.renderStepSize = 1000 / 15;
+    core.updateStepSize = 1000 / 30;
+    core.renderStepSize = 1000 / 30;
     core.allowUpdateSkips = true;
     core.allowRenderSkips = true;
 

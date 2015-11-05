@@ -23,6 +23,7 @@ internals.register = function(server) {
                     screenWidth: Config.screenWidth,
                     screenHeight: Config.screenHeight,
                     screenBuffer: Config.screenBuffer,
+                    leniency: Config.leniency,
                     food: Config.food,
                     tickRate: Config.tickRate
                 }

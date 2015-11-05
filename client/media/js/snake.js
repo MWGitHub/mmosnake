@@ -4,6 +4,7 @@ module.exports={
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
+  "leniency": 2,
   "blockWidth": 16,
   "tickRate": 6
 }
@@ -53374,6 +53375,10 @@ var _pixiCamera = require('../pixi/camera');
 
 var _pixiCamera2 = _interopRequireDefault(_pixiCamera);
 
+var _utilTimer = require('../util/timer');
+
+var _utilTimer2 = _interopRequireDefault(_utilTimer);
+
 var gridKey = {
     empty: 0,
     blocked: 1,
@@ -53405,7 +53410,8 @@ var commands = {
 var receives = {
     start: 'start',
     update: 'update',
-    die: 'die'
+    die: 'die',
+    ate: 'ate'
 };
 
 var GameState = (function (_CoreState) {
@@ -53458,19 +53464,22 @@ var GameState = (function (_CoreState) {
         this._screenWidth = _configJson2['default'].screenWidth;
         this._screenHeight = _configJson2['default'].screenHeight;
         this._screenBuffer = _configJson2['default'].screenBuffer;
+        this._leniency = _configJson2['default'].leniency;
+        this._tickRate = _configJson2['default'].tickRate;
 
         this._blocks = [];
         this._blockWidth = _configJson2['default'].blockWidth;
 
         /**
          * Player that is being controlled.
-         * @type {{id: number, index: number, direction: number}}
+         * @type {{id: number, index: number, direction: number, segments: Array<number>}}
          * @private
          */
         this._player = {
             id: 0,
             index: 0,
-            direction: 0
+            direction: 0,
+            segments: []
         };
 
         /**
@@ -53481,11 +53490,32 @@ var GameState = (function (_CoreState) {
         this._players = null;
 
         /**
+         * Last received tick from the server.
+         * @type {number}
+         * @private
+         */
+        this._tick = 0;
+
+        /**
          * True to set the game as running.
          * @type {boolean}
          * @private
          */
         this._isRunning = false;
+
+        /**
+         * Timer to check when updating the snake client side.
+         * @type {Timer}
+         * @private
+         */
+        this._timer = new _utilTimer2['default'](1000 / this._tickRate);
+
+        /**
+         * Queued update data, flushed between
+         * @type {Array}
+         * @private
+         */
+        this._queuedData = [];
 
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -53576,11 +53606,14 @@ var GameState = (function (_CoreState) {
                         _this._subgridBounds = data.subgridBounds;
                         _this._width = data.width;
                         _this._height = data.height;
+                        _this._players = data.players;
+                        _this._tick = data.tick;
+                        _this._isRunning = true;
+
                         _this._player.id = data.id;
                         _this._player.index = data.index;
                         _this._player.direction = data.direction;
-                        _this._players = data.players;
-                        _this._isRunning = true;
+                        _this._player.segments = data.segments;
 
                         // Set the starting camera to where the player is
                         var camera = _this._getPlayerCameraPosition();
@@ -53608,13 +53641,17 @@ var GameState = (function (_CoreState) {
 
                 _this._socket.on(receives.update, function (data) {
                     _this._delay(function () {
+                        var previousTick = _this._tick;
                         _this._grid = data.grid;
                         _this._subgridBounds = data.subgridBounds;
-                        _this._width = data.width;
-                        _this._player.id = data.id;
-                        _this._player.index = data.index;
-                        _this._player.direction = data.direction;
                         _this._players = data.players;
+                        _this._tick = data.tick;
+
+                        // Override client player if last update was too long ago or is forced
+                        if (data.isForced || _this._tick - previousTick > _this._leniency) {
+                            _this._player.index = data.index;
+                            _this._player.segments = data.segments;
+                        }
 
                         debug.players = data.players.length;
                         debug.index = data.index;
@@ -53622,6 +53659,18 @@ var GameState = (function (_CoreState) {
                         debug.direction = data.direction;
                         debug.length = data.segments.length;
                         debug.segments = data.segments;
+                    });
+                });
+
+                _this._socket.on(receives.ate, function (data) {
+                    _this._delay(function () {
+                        _this._grid = data.grid;
+                        _this._subgridBounds = data.subgridBounds;
+                        _this._players = data.players;
+                        _this._tick = data.tick;
+
+                        _this._player.index = data.index;
+                        _this._player.segments = data.segments;
                     });
                 });
                 console.log('Connected!');
@@ -53646,9 +53695,46 @@ var GameState = (function (_CoreState) {
                 direction = cardinal.W;
             }
             if (direction) {
+                this._player.direction = direction;
                 this._delay(function () {
-                    _this2._socket.emit(commands.direct, { direction: direction });
+                    if (!_this2._socket) return;
+                    _this2._socket.emit(commands.direct, {
+                        tick: _this2._tick,
+                        index: _this2._player.index,
+                        segments: _this2._player.segments,
+                        direction: direction
+                    });
                 });
+            }
+        }
+
+        /**
+         * Renders a player.
+         * @param player the player to render.
+         * @param {boolean} isLocalPlayer true if the player is the local player.
+         * @private
+         */
+    }, {
+        key: '_renderPlayer',
+        value: function _renderPlayer(player, isLocalPlayer) {
+            var block = new _pixiJs2['default'].Sprite(this._snakeTexture);
+            var col = player.index % this._width;
+            var row = Math.floor(player.index / this._width);
+            block.position.x = col * this._blockWidth;
+            block.position.y = row * this._blockWidth;
+            this._blocks.push(block);
+            this._scene.display.addChild(block);
+
+            for (var i = 0; i < player.segments.length; i++) {
+                var segment = player.segments[i];
+
+                block = new _pixiJs2['default'].Sprite(this._snakeTexture);
+                col = segment % this._width;
+                row = Math.floor(segment / this._width);
+                block.position.x = col * this._blockWidth;
+                block.position.y = row * this._blockWidth;
+                this._blocks.push(block);
+                this._scene.display.addChild(block);
             }
         }
 
@@ -53660,22 +53746,21 @@ var GameState = (function (_CoreState) {
         key: '_generateDisplay',
         value: function _generateDisplay() {
             var i;
-
             for (i = 0; i < this._blocks.length; i++) {
                 this._scene.display.removeChild(this._blocks[i]);
             }
+            // Generate graphics for static objects
             this._blocks = [];
             var startX = this._subgridBounds.x1 * this._blockWidth;
             var startY = this._subgridBounds.y1 * this._blockWidth;
             var width = this._subgridBounds.x2 - this._subgridBounds.x1;
             for (i = 0; i < this._grid.length; i++) {
                 var block = null;
-                if (this._grid[i] === gridKey.blocked) {
+                var key = this._grid[i];
+                if (key === gridKey.blocked) {
                     block = new _pixiJs2['default'].Sprite(this._blockTexture);
-                } else if (this._grid[i] === gridKey.food) {
+                } else if (key === gridKey.food) {
                     block = new _pixiJs2['default'].Sprite(this._foodTexture);
-                } else if (this._grid[i] === gridKey.snake) {
-                    block = new _pixiJs2['default'].Sprite(this._snakeTexture);
                 }
 
                 if (block) {
@@ -53685,6 +53770,15 @@ var GameState = (function (_CoreState) {
                     block.position.y = startY + row * this._blockWidth;
                     this._blocks.push(block);
                     this._scene.display.addChild(block);
+                }
+            }
+            // Generate graphics for the players
+            for (i = 0; i < this._players.length; i++) {
+                var player = this._players[i];
+                if (player.id === this._player.id) {
+                    this._renderPlayer(player, true);
+                } else {
+                    this._renderPlayer(player, false);
                 }
             }
         }
@@ -53715,12 +53809,73 @@ var GameState = (function (_CoreState) {
                 y: y
             };
         }
+
+        /**
+         * Simulates a tick.
+         * @private
+         */
+    }, {
+        key: '_simulate',
+        value: function _simulate() {
+            var _this3 = this;
+
+            /*
+            var index = this._player.index;
+             var x = index % this._width;
+            var y = Math.floor(index / this._width);
+            switch (this._player.direction) {
+                case cardinal.N:
+                    y -= 1;
+                    break;
+                case cardinal.E:
+                    x += 1;
+                    break;
+                case cardinal.S:
+                    y += 1;
+                    break;
+                case cardinal.W:
+                    x -= 1;
+                    break;
+            }
+            if (x < 0) {
+                x = 0;
+            } else if (x >= this._width) {
+                x = this._width - 1;
+            }
+            if (y < 0) {
+                y = 0;
+            } else if (y >= this._height) {
+                y = this._height - 1;
+            }
+             // Update the segments and head
+            this._player.segments.unshift(index);
+            this._player.index = y * this._width + x;
+            this._player.segments.pop();
+            */
+
+            this._delay(function () {
+                if (!_this3._socket) return;
+                _this3._socket.emit(commands.direct, {
+                    tick: _this3._tick,
+                    index: _this3._player.index,
+                    segments: _this3._player.segments,
+                    direction: _this3._player.direction
+                });
+            });
+        }
     }, {
         key: 'update',
         value: function update(dt) {
             if (!this._isRunning) return;
+            this._timer.update(dt);
 
             this._checkKeys();
+
+            // Simulate a tick if a tick has passed
+            if (this._timer.isReady()) {
+                this._simulate();
+                this._timer.reset();
+            }
 
             // Smooth the camera movement to the player location
             var finalCamera = this._getPlayerCameraPosition();
@@ -53753,7 +53908,7 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../../config.json":1,"../core/core-state":183,"../core/input":185,"../debug/debug":188,"../pixi/camera":194,"../pixi/viewport":196,"pixi.js":139,"socket.io-client":170}],192:[function(require,module,exports){
+},{"../../config.json":1,"../core/core-state":183,"../core/input":185,"../debug/debug":188,"../pixi/camera":194,"../pixi/viewport":196,"../util/timer":197,"pixi.js":139,"socket.io-client":170}],192:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -53903,8 +54058,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Create the core to update the main loop
     var core = new _coreCore2['default'](window);
-    core.updateStepSize = 1000 / 15;
-    core.renderStepSize = 1000 / 15;
+    core.updateStepSize = 1000 / 30;
+    core.renderStepSize = 1000 / 30;
     core.allowUpdateSkips = true;
     core.allowRenderSkips = true;
 
@@ -54326,7 +54481,77 @@ exports['default'] = Viewport;
 exports.Viewport = Viewport;
 exports.ViewportScene = ViewportScene;
 
-},{"pixi.js":139}]},{},[193])
+},{"pixi.js":139}],197:[function(require,module,exports){
+/**
+ * Repeating timer that is manually updated.
+ */
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Timer = (function () {
+    /**
+     * Creates the timer.
+     * @param {number} period the period before the timer becomes ready.
+     */
+
+    function Timer(period) {
+        _classCallCheck(this, Timer);
+
+        this.period = period;
+
+        this._currentTime = 0;
+    }
+
+    /**
+     * Update the timer.
+     * @param {number} dt the time to add to the current time.
+     */
+
+    _createClass(Timer, [{
+        key: "update",
+        value: function update(dt) {
+            this._currentTime += dt;
+        }
+
+        /**
+         * Reset the timer.
+         */
+    }, {
+        key: "reset",
+        value: function reset() {
+            this._currentTime = 0;
+        }
+    }, {
+        key: "isReady",
+
+        /**
+         * Returns true when the timer is ready.
+         * @returns {boolean}
+         */
+        value: function isReady() {
+            return this._currentTime > this.period;
+        }
+    }, {
+        key: "currentTime",
+        get: function get() {
+            return this._currentTime;
+        }
+    }]);
+
+    return Timer;
+})();
+
+exports["default"] = Timer;
+module.exports = exports["default"];
+
+},{}]},{},[193])
 
 
 //# sourceMappingURL=snake.js.map

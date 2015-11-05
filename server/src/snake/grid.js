@@ -147,30 +147,30 @@ class Grid {
 
         var out = 0;
         switch (direction) {
-        case internals.cardinal.N:
-            out = index - this._width;
-            if (out < 0) {
-                out = -internals.cardinal.N;
-            }
-            break;
-        case internals.cardinal.E:
-            out = index + 1;
-            if (out >= this._grid.length || out % this._width === 0) {
-                out = -internals.cardinal.E;
-            }
-            break;
-        case internals.cardinal.S:
-            out = index + this._width;
-            if (out > this._grid.length) {
-                out = -internals.cardinal.S;
-            }
-            break;
-        case internals.cardinal.W:
-            out = index - 1;
-            if (out < 0 || out % this._width === this._width - 1) {
-                out = -internals.cardinal.W;
-            }
-            break;
+            case internals.cardinal.N:
+                out = index - this._width;
+                if (out < 0) {
+                    out = -internals.cardinal.N;
+                }
+                break;
+            case internals.cardinal.E:
+                out = index + 1;
+                if (out >= this._grid.length || out % this._width === 0) {
+                    out = -internals.cardinal.E;
+                }
+                break;
+            case internals.cardinal.S:
+                out = index + this._width;
+                if (out > this._grid.length) {
+                    out = -internals.cardinal.S;
+                }
+                break;
+            case internals.cardinal.W:
+                out = index - 1;
+                if (out < 0 || out % this._width === this._width - 1) {
+                    out = -internals.cardinal.W;
+                }
+                break;
         }
         return out;
     }

@@ -6,6 +6,7 @@ import Input from '../core/input';
 import PIXI from 'pixi.js';
 import {Viewport, ViewportScene} from '../pixi/viewport';
 import Camera from '../pixi/camera';
+import Timer from '../util/timer';
 
 var gridKey = {
     empty: 0,
@@ -38,7 +39,8 @@ var commands = {
 var receives = {
     start: 'start',
     update: 'update',
-    die: 'die'
+    die: 'die',
+    ate: 'ate'
 };
 
 class GameState extends CoreState {
@@ -86,19 +88,22 @@ class GameState extends CoreState {
         this._screenWidth = Config.screenWidth;
         this._screenHeight = Config.screenHeight;
         this._screenBuffer = Config.screenBuffer;
+        this._leniency = Config.leniency;
+        this._tickRate = Config.tickRate;
 
         this._blocks = [];
         this._blockWidth = Config.blockWidth;
 
         /**
          * Player that is being controlled.
-         * @type {{id: number, index: number, direction: number}}
+         * @type {{id: number, index: number, direction: number, segments: Array<number>}}
          * @private
          */
         this._player = {
             id: 0,
             index: 0,
-            direction: 0
+            direction: 0,
+            segments: []
         };
 
         /**
@@ -109,11 +114,32 @@ class GameState extends CoreState {
         this._players = null;
 
         /**
+         * Last received tick from the server.
+         * @type {number}
+         * @private
+         */
+        this._tick = 0;
+
+        /**
          * True to set the game as running.
          * @type {boolean}
          * @private
          */
         this._isRunning = false;
+
+        /**
+         * Timer to check when updating the snake client side.
+         * @type {Timer}
+         * @private
+         */
+        this._timer = new Timer(1000 / this._tickRate);
+
+        /**
+         * Queued update data, flushed between
+         * @type {Array}
+         * @private
+         */
+        this._queuedData = [];
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -198,11 +224,14 @@ class GameState extends CoreState {
                     this._subgridBounds = data.subgridBounds;
                     this._width = data.width;
                     this._height = data.height;
+                    this._players = data.players;
+                    this._tick = data.tick;
+                    this._isRunning = true;
+
                     this._player.id = data.id;
                     this._player.index = data.index;
                     this._player.direction = data.direction;
-                    this._players = data.players;
-                    this._isRunning = true;
+                    this._player.segments = data.segments;
 
                     // Set the starting camera to where the player is
                     var camera = this._getPlayerCameraPosition();
@@ -230,13 +259,17 @@ class GameState extends CoreState {
 
             this._socket.on(receives.update, (data) => {
                 this._delay(() => {
+                    var previousTick = this._tick;
                     this._grid = data.grid;
                     this._subgridBounds = data.subgridBounds;
-                    this._width = data.width;
-                    this._player.id = data.id;
-                    this._player.index = data.index;
-                    this._player.direction = data.direction;
                     this._players = data.players;
+                    this._tick = data.tick;
+
+                    // Override client player if last update was too long ago or is forced
+                    if (data.isForced || this._tick - previousTick > this._leniency) {
+                        this._player.index = data.index;
+                        this._player.segments = data.segments;
+                    }
 
                     debug.players = data.players.length;
                     debug.index = data.index;
@@ -244,6 +277,18 @@ class GameState extends CoreState {
                     debug.direction = data.direction;
                     debug.length = data.segments.length;
                     debug.segments = data.segments;
+                });
+            });
+
+            this._socket.on(receives.ate, (data) => {
+                this._delay(() => {
+                    this._grid = data.grid;
+                    this._subgridBounds = data.subgridBounds;
+                    this._players = data.players;
+                    this._tick = data.tick;
+
+                    this._player.index = data.index;
+                    this._player.segments = data.segments;
                 });
             });
             console.log('Connected!');
@@ -265,9 +310,44 @@ class GameState extends CoreState {
             direction = cardinal.W;
         }
         if (direction) {
+            this._player.direction = direction;
             this._delay(() => {
-                this._socket.emit(commands.direct, {direction: direction});
+                if (!this._socket) return;
+                this._socket.emit(commands.direct, {
+                    tick: this._tick,
+                    index: this._player.index,
+                    segments: this._player.segments,
+                    direction: direction
+                });
             });
+        }
+    }
+
+    /**
+     * Renders a player.
+     * @param player the player to render.
+     * @param {boolean} isLocalPlayer true if the player is the local player.
+     * @private
+     */
+    _renderPlayer(player, isLocalPlayer) {
+        var block = new PIXI.Sprite(this._snakeTexture);
+        var col = player.index % this._width;
+        var row = Math.floor(player.index / this._width);
+        block.position.x = col * this._blockWidth;
+        block.position.y = row * this._blockWidth;
+        this._blocks.push(block);
+        this._scene.display.addChild(block);
+
+        for (var i = 0; i < player.segments.length; i++) {
+            var segment = player.segments[i];
+
+            block = new PIXI.Sprite(this._snakeTexture);
+            col = segment % this._width;
+            row = Math.floor(segment / this._width);
+            block.position.x = col * this._blockWidth;
+            block.position.y = row * this._blockWidth;
+            this._blocks.push(block);
+            this._scene.display.addChild(block);
         }
     }
 
@@ -280,18 +360,18 @@ class GameState extends CoreState {
         for (i = 0; i < this._blocks.length; i++) {
             this._scene.display.removeChild(this._blocks[i]);
         }
+        // Generate graphics for static objects
         this._blocks = [];
         var startX = this._subgridBounds.x1 * this._blockWidth;
-        var startY = this._subgridBounds.y1 * this._blockWidth
+        var startY = this._subgridBounds.y1 * this._blockWidth;
         var width = this._subgridBounds.x2 - this._subgridBounds.x1;
         for (i = 0; i < this._grid.length; i++) {
             var block = null;
-            if (this._grid[i] === gridKey.blocked) {
+            var key = this._grid[i];
+            if (key === gridKey.blocked) {
                 block = new PIXI.Sprite(this._blockTexture);
-            } else if (this._grid[i] === gridKey.food) {
+            } else if (key === gridKey.food) {
                 block = new PIXI.Sprite(this._foodTexture);
-            } else if (this._grid[i] === gridKey.snake) {
-                block = new PIXI.Sprite(this._snakeTexture);
             }
 
             if (block) {
@@ -301,6 +381,15 @@ class GameState extends CoreState {
                 block.position.y = startY + row * this._blockWidth;
                 this._blocks.push(block);
                 this._scene.display.addChild(block);
+            }
+        }
+        // Generate graphics for the players
+        for (i = 0; i < this._players.length; i++) {
+            var player = this._players[i];
+            if (player.id === this._player.id) {
+                this._renderPlayer(player, true);
+            } else {
+                this._renderPlayer(player, false);
             }
         }
     }
@@ -327,13 +416,72 @@ class GameState extends CoreState {
         return {
             x: x,
             y: y
+        };
+    }
+
+    /**
+     * Simulates a tick.
+     * @private
+     */
+    _simulate() {
+        /*
+        var index = this._player.index;
+
+        var x = index % this._width;
+        var y = Math.floor(index / this._width);
+        switch (this._player.direction) {
+            case cardinal.N:
+                y -= 1;
+                break;
+            case cardinal.E:
+                x += 1;
+                break;
+            case cardinal.S:
+                y += 1;
+                break;
+            case cardinal.W:
+                x -= 1;
+                break;
         }
+        if (x < 0) {
+            x = 0;
+        } else if (x >= this._width) {
+            x = this._width - 1;
+        }
+        if (y < 0) {
+            y = 0;
+        } else if (y >= this._height) {
+            y = this._height - 1;
+        }
+
+        // Update the segments and head
+        this._player.segments.unshift(index);
+        this._player.index = y * this._width + x;
+        this._player.segments.pop();
+        */
+
+        this._delay(() => {
+            if (!this._socket) return;
+            this._socket.emit(commands.direct, {
+                tick: this._tick,
+                index: this._player.index,
+                segments: this._player.segments,
+                direction: this._player.direction
+            });
+        });
     }
 
     update(dt) {
         if (!this._isRunning) return;
+        this._timer.update(dt);
 
         this._checkKeys();
+
+        // Simulate a tick if a tick has passed
+        if (this._timer.isReady()) {
+            this._simulate();
+            this._timer.reset();
+        }
 
         // Smooth the camera movement to the player location
         var finalCamera = this._getPlayerCameraPosition();

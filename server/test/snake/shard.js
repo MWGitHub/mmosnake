@@ -23,7 +23,7 @@ describe('shard', function() {
         isAlive: true
     };
 
-    it('should setup with the the starting amount of food', function(done) {
+    it('should set up with the the starting amount of food', function(done) {
         var limit = 3;
         for (var i = 0; i < 10; i++) {
             var shard = new Shard(defaultDimensions, defaultDimensions);
