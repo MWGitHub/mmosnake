@@ -53381,7 +53381,7 @@ var _utilTimer2 = _interopRequireDefault(_utilTimer);
 
 var gridKey = {
     empty: 0,
-    blocked: 1,
+    block: 1,
     food: 2,
     snake: 3
 };
@@ -53405,7 +53405,8 @@ var debug = {
 };
 
 var commands = {
-    direct: 'direct'
+    direct: 'direct',
+    eat: 'eat'
 };
 
 var receives = {
@@ -53479,7 +53480,7 @@ var GameState = (function (_CoreState) {
         this._player = {
             id: 0,
             position: { x: 0, y: 0 },
-            direction: 0,
+            direction: cardinal.E,
             segments: []
         };
 
@@ -53822,7 +53823,7 @@ var GameState = (function (_CoreState) {
                 for (var col = 0; col < this._grid[row].length; col++) {
                     var block = null;
                     var key = this._grid[row][col];
-                    if (key === gridKey.blocked) {
+                    if (key === gridKey.block) {
                         block = new _pixiJs2['default'].Sprite(this._blockTexture);
                     } else if (key === gridKey.food) {
                         block = new _pixiJs2['default'].Sprite(this._foodTexture);
@@ -53912,6 +53913,18 @@ var GameState = (function (_CoreState) {
                 y = this._height - 1;
             }
 
+            var value = this._grid[y - this._subgridBounds.y1][x - this._subgridBounds.x1];
+            // Going to die, stop moving and wait for server signal
+            if (value === gridKey.block) {
+                return;
+            } else if (value === gridKey.food) {
+                // Tell the server you ate something (otherwise client syncing could miss it)
+                this._socket.emit(commands.eat, {
+                    x: x,
+                    y: y
+                });
+            }
+
             // Update the segments and head
             this._player.segments.unshift({ x: position.x, y: position.y });
             this._player.position.x = x;
@@ -53956,7 +53969,6 @@ var GameState = (function (_CoreState) {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving game state');
-            this._timer.reset();
             this._isRunning = false;
 
             if (this._socket) {
@@ -53966,6 +53978,24 @@ var GameState = (function (_CoreState) {
 
             // Remove the displays
             this._viewport.removeFromParent();
+
+            // Reset values to default
+            this._grid = [];
+            this._subgridBounds = null;
+            this._width = 0;
+            this._height = 0;
+
+            this._blocks = [];
+            this._player = {
+                id: 0,
+                position: { x: 0, y: 0 },
+                direction: cardinal.E,
+                segments: []
+            };
+            this._players = null;
+            this._tick = 0;
+            this._timer.reset();
+            this._queuedData = [];
         }
     }]);
 

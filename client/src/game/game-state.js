@@ -104,7 +104,7 @@ class GameState extends CoreState {
         this._player = {
             id: 0,
             position: {x: 0, y: 0},
-            direction: 0,
+            direction: cardinal.E,
             segments: []
         };
 
@@ -515,7 +515,7 @@ class GameState extends CoreState {
             y = this._height - 1;
         }
 
-        var value = this._grid[y][x];
+        var value = this._grid[y - this._subgridBounds.y1][x - this._subgridBounds.x1];
         // Going to die, stop moving and wait for server signal
         if (value === gridKey.block) {
             return;
@@ -569,7 +569,6 @@ class GameState extends CoreState {
 
     onLeave() {
         console.log('leaving game state');
-        this._timer.reset();
         this._isRunning = false;
 
         if (this._socket) {
@@ -579,6 +578,24 @@ class GameState extends CoreState {
 
         // Remove the displays
         this._viewport.removeFromParent();
+
+        // Reset values to default
+        this._grid = [];
+        this._subgridBounds = null;
+        this._width = 0;
+        this._height = 0;
+
+        this._blocks = [];
+        this._player = {
+            id: 0,
+            position: {x: 0, y: 0},
+            direction: cardinal.E,
+            segments: []
+        };
+        this._players = null;
+        this._tick = 0;
+        this._timer.reset();
+        this._queuedData = [];
     }
 }
 
