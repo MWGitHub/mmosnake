@@ -29,6 +29,12 @@ class Player {
         this._socket = socket;
 
         /**
+         * Tick the player last took an action on.
+         * @type {number}
+         */
+        this.lastUpdateTick = 0;
+
+        /**
          * Position of the snake head.
          * @type {{x: number, y: number}}
          */

@@ -104,7 +104,7 @@ class Shard {
         this.tickRate = 6;
 
         /**
-         * Grace period before hitting a wall would kill the player.
+         * Grace period before hitting a wall or snake would kill the player.
          * @type {number}
          */
         this.grace = 1;

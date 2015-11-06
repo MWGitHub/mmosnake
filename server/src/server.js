@@ -25,7 +25,9 @@ internals.register = function(server) {
                     screenBuffer: Config.screenBuffer,
                     leniency: Config.leniency,
                     food: Config.food,
-                    tickRate: Config.tickRate
+                    tickRate: Config.tickRate,
+                    blockGrace: Config.blockGrace,
+                    snakeGrace: Config.snakeGrace
                 }
             }
         ], function(err) {

@@ -17,11 +17,14 @@ var snake = {
         var leniency = options.leniency || 0;
         var food = options.food || 3;
         var tickRate = options.tickRate || 6;
+        var grace = options.grace || 2;
 
         // Create a single shard instance for now
         var shard = new SnakeShard(width, height, screenWidth, screenHeight, screenBuffer, leniency);
         shard.foodLimit = food;
         shard.tickRate = tickRate;
+        shard.grace = grace;
+
         io.on('connection', function(socket) {
             shard.addSocket(socket);
             Logger.info('New connection');
