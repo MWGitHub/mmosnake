@@ -7,6 +7,7 @@ import PIXI from 'pixi.js';
 import {Viewport, ViewportScene} from '../pixi/viewport';
 import Camera from '../pixi/camera';
 import Timer from '../util/timer';
+import OverlayFilter from '../pixi/filters/OverlayFilter';
 
 var gridKey = {
     empty: 0,
@@ -77,6 +78,13 @@ class GameState extends CoreState {
          * @private
          */
         this._scene = null;
+
+        /**
+         * Overlay for the screen.
+         * @type {ViewportScene}
+         * @private
+         */
+        this._overlay = null;
 
         /**
          * Layer to attach main display objects to.
@@ -176,11 +184,13 @@ class GameState extends CoreState {
          */
         this._directionQueueSize = 2;
 
-        this._shadowFilter = new PIXI.filters.DropShadowFilter();
-        this._shadowFilter.alpha = 1;
-        this._shadowFilter.angle = 0.35;
-        this._shadowFilter.blur = 0;
-        this._shadowFilter.color = 0x3e8400;
+        /**
+         * Filter for changing object color.
+         * @type {OverlayFilter}
+         * @private
+         */
+        this._objectFilter = new OverlayFilter();
+        this._objectFilter.setColor(0, 0, 0);
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -245,6 +255,14 @@ class GameState extends CoreState {
         this._scene.display.addChild(this._shadows);
         this._displayObjects = new PIXI.Container();
         this._scene.display.addChild(this._displayObjects);
+        // Add the overlay to the viewport
+        this._overlay = new ViewportScene();
+        this._overlay.isLocked = true;
+        this._viewport.addScene(this._overlay);
+        var overlayScreen = new PIXI.Sprite(this._resources['screen-pattern'].texture);
+        overlayScreen.position.x = -this._viewport.width / 2;
+        overlayScreen.position.y = -this._viewport.height / 2;
+        this._overlay.display.addChild(overlayScreen);
 
         // Connect to the server
         this._socket = io.connect(Config.host, {
@@ -454,12 +472,14 @@ class GameState extends CoreState {
 
         // Create displayable player head
         var block = new PIXI.Sprite(this._resources[resource].texture);
+        block.filters = [this._objectFilter];
         block.position.x = player.position.x * this._blockWidth;
         block.position.y = player.position.y * this._blockWidth;
         this._blocks.push(block);
         this._displayObjects.addChild(block);
         // Create shadow
         block = new PIXI.Sprite(this._resources[resource].texture);
+        block.filters = [this._objectFilter];
         block.alpha = 0.5;
         block.position.x = player.position.x * this._blockWidth + this._shadowOffsetX;
         block.position.y = player.position.y * this._blockWidth + this._shadowOffsetY;
@@ -509,12 +529,14 @@ class GameState extends CoreState {
 
             // Create the display segment
             block = new PIXI.Sprite(this._resources[resource].texture);
+            block.filters = [this._objectFilter];
             block.position.x = segment.x * this._blockWidth;
             block.position.y = segment.y * this._blockWidth;
             this._blocks.push(block);
             this._displayObjects.addChild(block);
             // Create the shadow
             block = new PIXI.Sprite(this._resources[resource].texture);
+            block.filters = [this._objectFilter];
             block.alpha = 0.5;
             block.position.x = segment.x * this._blockWidth + this._shadowOffsetX;
             block.position.y = segment.y * this._blockWidth + this._shadowOffsetY;
@@ -550,12 +572,14 @@ class GameState extends CoreState {
                 if (renderTexture) {
                     // Create the block display
                     block = new PIXI.Sprite(renderTexture);
+                    block.filters = [this._objectFilter];
                     block.position.x = startX + col * this._blockWidth;
                     block.position.y = startY + row * this._blockWidth;
                     this._blocks.push(block);
                     this._displayObjects.addChild(block);
                     // Create the shadow
                     block = new PIXI.Sprite(renderTexture);
+                    block.filters = [this._objectFilter];
                     block.alpha = 0.5;
                     block.position.x = startX + col * this._blockWidth + this._shadowOffsetX;
                     block.position.y = startY + row * this._blockWidth + this._shadowOffsetY;
@@ -648,8 +672,24 @@ class GameState extends CoreState {
         }
 
         var value = this._grid[y - this._subgridBounds.y1][x - this._subgridBounds.x1];
+        // Check if any snakes hit
+        var hitSnake = false;
+        for (var i = 0; i < this._players.length; i++) {
+            var snake = this._players[i];
+            if (snake.x === x && snake.y === y) {
+                hitSnake = true;
+                break;
+            }
+            for (var j = 0; j < snake.segments.length; j++) {
+                if (x === snake.segments[j].x && y === snake.segments[j].y) {
+                    hitSnake = true;
+                    break;
+                }
+            }
+            if (hitSnake) break;
+        }
         // Going to die, stop moving and wait for server signal
-        if (value === gridKey.block) {
+        if (value === gridKey.block || hitSnake) {
             this._socket.emit(commands.direct, {
                 tick: this._tick,
                 position: this._player.position,

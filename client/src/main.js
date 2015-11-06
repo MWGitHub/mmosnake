@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Initialize and add the renderer
         var layer = new Layer(document.getElementById('game'));
+        layer.renderer.backgroundColor = 0xc4cc22;
         core.addRenderLayer(layer);
 
         // Create the state switcher and add the states
@@ -79,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loader.add('head-south', '/media/images/head-south.png');
     loader.add('head-west', '/media/images/head-west.png');
     loader.add('food', '/media/images/food.png');
+    loader.add('screen-pattern', '/media/images/screen-pattern.png');
 
     loader.load(function(loader, resources) {
         start(resources);

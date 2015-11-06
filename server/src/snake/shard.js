@@ -293,11 +293,9 @@ class Shard {
             if (hitSnake) break;
         }
 
-        // Die if the walls or other snakes are hit when moved
+        // Die if the walls or other snakes are hit when moved and grace period expired
         var nextValue = grid.getValueInDirection(currentPosition.x, currentPosition.y, direction);
-        if (nextValue === null || hitSnake) {
-            this._die(player);
-        } else if (nextValue === internals.keys.block) {
+        if (nextValue === null || hitSnake || nextValue === internals.keys.block) {
             if (player.graceCounter >= this.grace) {
                 this._die(player);
             } else {

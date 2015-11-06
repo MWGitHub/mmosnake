@@ -53373,6 +53373,10 @@ var _utilTimer = require('../util/timer');
 
 var _utilTimer2 = _interopRequireDefault(_utilTimer);
 
+var _pixiFiltersOverlayFilter = require('../pixi/filters/OverlayFilter');
+
+var _pixiFiltersOverlayFilter2 = _interopRequireDefault(_pixiFiltersOverlayFilter);
+
 var gridKey = {
     empty: 0,
     block: 1,
@@ -53447,6 +53451,13 @@ var GameState = (function (_CoreState) {
          * @private
          */
         this._scene = null;
+
+        /**
+         * Overlay for the screen.
+         * @type {ViewportScene}
+         * @private
+         */
+        this._overlay = null;
 
         /**
          * Layer to attach main display objects to.
@@ -53546,11 +53557,13 @@ var GameState = (function (_CoreState) {
          */
         this._directionQueueSize = 2;
 
-        this._shadowFilter = new _pixiJs2['default'].filters.DropShadowFilter();
-        this._shadowFilter.alpha = 1;
-        this._shadowFilter.angle = 0.35;
-        this._shadowFilter.blur = 0;
-        this._shadowFilter.color = 0x3e8400;
+        /**
+         * Filter for changing object color.
+         * @type {OverlayFilter}
+         * @private
+         */
+        this._objectFilter = new _pixiFiltersOverlayFilter2['default']();
+        this._objectFilter.setColor(0, 0, 0);
 
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -53621,6 +53634,14 @@ var GameState = (function (_CoreState) {
             this._scene.display.addChild(this._shadows);
             this._displayObjects = new _pixiJs2['default'].Container();
             this._scene.display.addChild(this._displayObjects);
+            // Add the overlay to the viewport
+            this._overlay = new _pixiViewport.ViewportScene();
+            this._overlay.isLocked = true;
+            this._viewport.addScene(this._overlay);
+            var overlayScreen = new _pixiJs2['default'].Sprite(this._resources['screen-pattern'].texture);
+            overlayScreen.position.x = -this._viewport.width / 2;
+            overlayScreen.position.y = -this._viewport.height / 2;
+            this._overlay.display.addChild(overlayScreen);
 
             // Connect to the server
             this._socket = _socketIoClient2['default'].connect(_configJson2['default'].host, {
@@ -53838,12 +53859,14 @@ var GameState = (function (_CoreState) {
 
             // Create displayable player head
             var block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+            block.filters = [this._objectFilter];
             block.position.x = player.position.x * this._blockWidth;
             block.position.y = player.position.y * this._blockWidth;
             this._blocks.push(block);
             this._displayObjects.addChild(block);
             // Create shadow
             block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+            block.filters = [this._objectFilter];
             block.alpha = 0.5;
             block.position.x = player.position.x * this._blockWidth + this._shadowOffsetX;
             block.position.y = player.position.y * this._blockWidth + this._shadowOffsetY;
@@ -53893,12 +53916,14 @@ var GameState = (function (_CoreState) {
 
                 // Create the display segment
                 block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+                block.filters = [this._objectFilter];
                 block.position.x = segment.x * this._blockWidth;
                 block.position.y = segment.y * this._blockWidth;
                 this._blocks.push(block);
                 this._displayObjects.addChild(block);
                 // Create the shadow
                 block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+                block.filters = [this._objectFilter];
                 block.alpha = 0.5;
                 block.position.x = segment.x * this._blockWidth + this._shadowOffsetX;
                 block.position.y = segment.y * this._blockWidth + this._shadowOffsetY;
@@ -53936,12 +53961,14 @@ var GameState = (function (_CoreState) {
                     if (renderTexture) {
                         // Create the block display
                         block = new _pixiJs2['default'].Sprite(renderTexture);
+                        block.filters = [this._objectFilter];
                         block.position.x = startX + col * this._blockWidth;
                         block.position.y = startY + row * this._blockWidth;
                         this._blocks.push(block);
                         this._displayObjects.addChild(block);
                         // Create the shadow
                         block = new _pixiJs2['default'].Sprite(renderTexture);
+                        block.filters = [this._objectFilter];
                         block.alpha = 0.5;
                         block.position.x = startX + col * this._blockWidth + this._shadowOffsetX;
                         block.position.y = startY + row * this._blockWidth + this._shadowOffsetY;
@@ -54040,8 +54067,24 @@ var GameState = (function (_CoreState) {
             }
 
             var value = this._grid[y - this._subgridBounds.y1][x - this._subgridBounds.x1];
+            // Check if any snakes hit
+            var hitSnake = false;
+            for (var i = 0; i < this._players.length; i++) {
+                var snake = this._players[i];
+                if (snake.x === x && snake.y === y) {
+                    hitSnake = true;
+                    break;
+                }
+                for (var j = 0; j < snake.segments.length; j++) {
+                    if (x === snake.segments[j].x && y === snake.segments[j].y) {
+                        hitSnake = true;
+                        break;
+                    }
+                }
+                if (hitSnake) break;
+            }
             // Going to die, stop moving and wait for server signal
-            if (value === gridKey.block) {
+            if (value === gridKey.block || hitSnake) {
                 this._socket.emit(commands.direct, {
                     tick: this._tick,
                     position: this._player.position,
@@ -54136,7 +54179,7 @@ var GameState = (function (_CoreState) {
 exports['default'] = GameState;
 module.exports = exports['default'];
 
-},{"../../config.json":1,"../core/core-state":183,"../core/input":185,"../debug/debug":188,"../pixi/camera":194,"../pixi/viewport":196,"../util/timer":197,"pixi.js":139,"socket.io-client":170}],192:[function(require,module,exports){
+},{"../../config.json":1,"../core/core-state":183,"../core/input":185,"../debug/debug":188,"../pixi/camera":194,"../pixi/filters/OverlayFilter":195,"../pixi/viewport":197,"../util/timer":198,"pixi.js":139,"socket.io-client":170}],192:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -54298,6 +54341,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Initialize and add the renderer
         var layer = new _pixiLayer2['default'](document.getElementById('game'));
+        layer.renderer.backgroundColor = 0xc4cc22;
         core.addRenderLayer(layer);
 
         // Create the state switcher and add the states
@@ -54346,13 +54390,14 @@ document.addEventListener('DOMContentLoaded', function () {
     loader.add('head-south', '/media/images/head-south.png');
     loader.add('head-west', '/media/images/head-west.png');
     loader.add('food', '/media/images/food.png');
+    loader.add('screen-pattern', '/media/images/screen-pattern.png');
 
     loader.load(function (loader, resources) {
         start(resources);
     });
 });
 
-},{"../config.json":1,"./core/core":184,"./core/input":185,"./core/state-switcher":187,"./debug/debug":188,"./game/bot-state":189,"./game/end-state":190,"./game/game-state":191,"./game/start-state":192,"./pixi/layer":195,"pixi.js":139}],194:[function(require,module,exports){
+},{"../config.json":1,"./core/core":184,"./core/input":185,"./core/state-switcher":187,"./debug/debug":188,"./game/bot-state":189,"./game/end-state":190,"./game/game-state":191,"./game/start-state":192,"./pixi/layer":196,"pixi.js":139}],194:[function(require,module,exports){
 "use strict";
 /**
  * Represents a camera.
@@ -54386,6 +54431,52 @@ exports["default"] = Camera;
 module.exports = exports["default"];
 
 },{}],195:[function(require,module,exports){
+/**
+ * @author MW
+ * Filter for overlaying a color over a texture.
+ */
+
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _pixiJs = require('pixi.js');
+
+var _pixiJs2 = _interopRequireDefault(_pixiJs);
+
+function OverlayFilter() {
+    'use strict';
+    _pixiJs2['default'].AbstractFilter.call(this, null, ['precision mediump float;', 'varying vec2 vTextureCoord;', 'varying vec4 vColor;', 'uniform sampler2D uSampler;', 'uniform float r;', 'uniform float g;', 'uniform float b;', 'void main(void) {', '   vec4 color = texture2D(uSampler, vTextureCoord);', '   color.r = color.r * r;', '   color.g = color.g * g;', '   color.b = color.b * b;', '   gl_FragColor = color;', '}'].join('\n'), {
+        r: { type: '1f', value: 1.0 },
+        g: { type: '1f', value: 1.0 },
+        b: { type: '1f', value: 1.0 }
+    });
+}
+OverlayFilter.prototype = Object.create(_pixiJs2['default'].AbstractFilter.prototype);
+OverlayFilter.prototype.constructor = OverlayFilter;
+
+/**
+ * Sets the color for the overlay.
+ * @param {Number} r the red multiplier.
+ * @param {Number} g the green multiplier.
+ * @param {Number} b the blue multiplier.
+ */
+OverlayFilter.prototype.setColor = function (r, g, b) {
+    'use strict';
+
+    this.uniforms.r.value = r;
+    this.uniforms.g.value = g;
+    this.uniforms.b.value = b;
+};
+
+exports['default'] = OverlayFilter;
+module.exports = exports['default'];
+
+},{"pixi.js":139}],196:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -54496,7 +54587,7 @@ var Layer = (function (_RenderLayer) {
 exports['default'] = Layer;
 module.exports = exports['default'];
 
-},{"../core/render-layer":186}],196:[function(require,module,exports){
+},{"../core/render-layer":186}],197:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -54733,7 +54824,7 @@ exports['default'] = Viewport;
 exports.Viewport = Viewport;
 exports.ViewportScene = ViewportScene;
 
-},{"pixi.js":139}],197:[function(require,module,exports){
+},{"pixi.js":139}],198:[function(require,module,exports){
 /**
  * Repeating timer that is manually updated.
  */
