@@ -265,11 +265,16 @@ class Shard {
         var direction = player.direction;
         // Get the position the player will move in
         var nextPosition = grid.getCoordinatesInDirection(currentPosition.x, currentPosition.y, direction);
+        // If no next position player is outside and will die
+        if (!nextPosition) {
+            this._die(player);
+            return;
+        }
 
         // Check if any snakes hit
         var hitSnake = false;
         for (var key in this._players) {
-            if (!this._players.hasOwnProperty(key) || this._players[key].id === player.id) continue;
+            if (!this._players.hasOwnProperty(key)) continue;
             var snake = this._players[key];
             if (snake.isSamePosition(nextPosition)) {
                 hitSnake = true;
@@ -335,19 +340,24 @@ class Shard {
     }
 
     /**
-     * Checks if the directions given are the opposite.
+     * Checks if the player is moving backwards.
      * @param {Player} player the player to check.
      * @param {number} direction the direction to check.
      * @returns {boolean} true if the directions are opposite.
      */
     isMovingBackwards(player, direction) {
-        // Check if trying to move into the previous segment
+        // Check if trying to move into the previous two segments
+        // Checks previous two to catch fast two direction inputs
         var next = this._grid.getCoordinatesInDirection(player.position.x, player.position.y, direction);
-        if (player.segments.length > 0) {
-            var segment = player.segments[0];
-            return next.x === segment.x && next.y === segment.y;
+        var isBackwards = false;
+        for (var i = 0; i < player.segments.length && i < 2; i++) {
+            var segment = player.segments[i];
+            if (next.x === segment.x && next.y === segment.y) {
+                isBackwards = true;
+                break;
+            }
         }
-        return false;
+        return isBackwards;
     }
 
     /**
@@ -363,12 +373,16 @@ class Shard {
         if (!_.includes(Grid.Cardinal, direction)) {
             console.log('invalid');
             this.removePlayer(player);
-        } else if (player.isSamePosition(position)) {
-            // Only change directions if the player has not moved
+            return;
+        }
+
+        // Only change directions if the player has not moved
+        if (player.isSamePosition(position)) {
             console.log('direction changed');
-            player.direction = direction;
+            if (!this.isMovingBackwards(player, direction)) {
+                player.direction = direction;
+            }
         } else {
-            console.log(direction);
             // Check if player position differs too much from the server position
             var distance = Math.pow(player.position.x - position.x, 2) + Math.pow(player.position.y - position.y, 2);
             var isOutOfSync = this._tick - tick > this._leniency;

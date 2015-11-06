@@ -53473,7 +53473,7 @@ var GameState = (function (_CoreState) {
 
         /**
          * Player that is being controlled.
-         * @type {{id: number, index: number, direction: number, segments: Array<number>}}
+         * @type {{id: number, position: {x: number, y: number}, direction: number, segments: Array.<{x: number, y: number}>}}
          * @private
          */
         this._player = {
@@ -53485,7 +53485,7 @@ var GameState = (function (_CoreState) {
 
         /**
          * Players in the server.
-         * @type {Array.<{id: number, index: number, direction: number}>}
+         * @type {Array.<{id: number, position: {x: number, y: number}, segments: Array.<{x: number, y: number}>, direction: number}>}
          * @private
          */
         this._players = null;
@@ -53691,7 +53691,7 @@ var GameState = (function (_CoreState) {
             this._tick = data.tick;
 
             // Override client player if last update was too long ago or is forced
-            data.isForced = true;
+            //data.isForced = true;
             if (data.isForced || this._tick - previousTick > this._leniency) {
                 console.log('forced');
                 this._player.position = data.position;
@@ -53710,14 +53710,53 @@ var GameState = (function (_CoreState) {
         }
 
         /**
+         * Checks if the player is moving backwards.
+         * @param {number} direction the direction to check.
+         * @returns {boolean} true if the direction is backwards.
+         */
+    }, {
+        key: 'isMovingBackwards',
+        value: function isMovingBackwards(direction) {
+            // Check if trying to move into the previous two segments
+            // Checks previous two to catch fast two direction inputs
+            var next = {
+                x: this._player.position.x,
+                y: this._player.position.y
+            };
+
+            switch (direction) {
+                case cardinal.N:
+                    next.y -= 1;
+                    break;
+                case cardinal.E:
+                    next.x += 1;
+                    break;
+                case cardinal.S:
+                    next.y += 1;
+                    break;
+                case cardinal.W:
+                    next.x -= 1;
+                    break;
+            }
+
+            var isBackwards = false;
+            for (var i = 0; i < this._player.segments.length && i < 2; i++) {
+                var segment = this._player.segments[i];
+                if (next.x === segment.x && next.y === segment.y) {
+                    isBackwards = true;
+                    break;
+                }
+            }
+            return isBackwards;
+        }
+
+        /**
          * Check if player direction should change.
          * @private
          */
     }, {
         key: '_checkKeys',
         value: function _checkKeys() {
-            var _this2 = this;
-
             var direction;
             if (this._input.keysJustDown['move-up']) {
                 direction = cardinal.N;
@@ -53731,20 +53770,9 @@ var GameState = (function (_CoreState) {
             if (this._input.keysJustDown['move-left']) {
                 direction = cardinal.W;
             }
-            if (direction) {
-                // Prevent moving in the opposite direction
-                if (Math.abs(this._player.direction - direction) !== 2) {
-                    this._player.direction = direction;
-                    this._delay(function () {
-                        if (!_this2._socket) return;
-                        _this2._socket.emit(commands.direct, {
-                            tick: _this2._tick,
-                            position: _this2._player.position,
-                            segments: _this2._player.segments,
-                            direction: direction
-                        });
-                    });
-                }
+            // Prevent moving in the opposite direction
+            if (direction && !this.isMovingBackwards(direction)) {
+                this._player.direction = direction;
             }
         }
 
@@ -53852,12 +53880,12 @@ var GameState = (function (_CoreState) {
     }, {
         key: '_simulate',
         value: function _simulate() {
-            var _this3 = this;
+            var _this2 = this;
 
-            var index = this._player.index;
+            var position = this._player.position;
 
-            var x = index % this._width;
-            var y = Math.floor(index / this._width);
+            var x = position.x;
+            var y = position.y;
             switch (this._player.direction) {
                 case cardinal.N:
                     y -= 1;
@@ -53884,19 +53912,18 @@ var GameState = (function (_CoreState) {
             }
 
             // Update the segments and head
-            /*
-            this._player.segments.unshift(index);
-            this._player.index = y * this._width + x;
+            this._player.segments.unshift({ x: position.x, y: position.y });
+            this._player.position.x = x;
+            this._player.position.y = y;
             this._player.segments.pop();
-            */
 
             this._delay(function () {
-                if (!_this3._socket) return;
-                _this3._socket.emit(commands.direct, {
-                    tick: _this3._tick,
-                    index: _this3._player.index,
-                    segments: _this3._player.segments,
-                    direction: _this3._player.direction
+                if (!_this2._socket) return;
+                _this2._socket.emit(commands.direct, {
+                    tick: _this2._tick,
+                    position: _this2._player.position,
+                    segments: _this2._player.segments,
+                    direction: _this2._player.direction
                 });
             });
         }
@@ -53911,7 +53938,7 @@ var GameState = (function (_CoreState) {
 
             // Simulate a tick if a tick has passed
             if (this._timer.isReady()) {
-                //this._simulate();
+                this._simulate();
                 this._timer.reset();
             }
 

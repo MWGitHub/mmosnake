@@ -68,6 +68,7 @@ class Player {
      * @returns {boolean} true if in the same position.
      */
     isSamePosition(v) {
+        if (!v) return false;
         return this.position.x === v.x && this.position.y === v.y;
     }
 

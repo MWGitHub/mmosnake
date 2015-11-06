@@ -97,7 +97,7 @@ class GameState extends CoreState {
 
         /**
          * Player that is being controlled.
-         * @type {{id: number, index: number, direction: number, segments: Array<number>}}
+         * @type {{id: number, position: {x: number, y: number}, direction: number, segments: Array.<{x: number, y: number}>}}
          * @private
          */
         this._player = {
@@ -109,7 +109,7 @@ class GameState extends CoreState {
 
         /**
          * Players in the server.
-         * @type {Array.<{id: number, index: number, direction: number}>}
+         * @type {Array.<{id: number, position: {x: number, y: number}, segments: Array.<{x: number, y: number}>, direction: number}>}
          * @private
          */
         this._players = null;
@@ -307,7 +307,7 @@ class GameState extends CoreState {
         this._tick = data.tick;
 
         // Override client player if last update was too long ago or is forced
-        data.isForced = true;
+        //data.isForced = true;
         if (data.isForced || this._tick - previousTick > this._leniency) {
             console.log('forced');
             this._player.position = data.position;
@@ -323,6 +323,45 @@ class GameState extends CoreState {
         debug.segments = data.segments;
 
         this._queuedData = [];
+    }
+
+    /**
+     * Checks if the player is moving backwards.
+     * @param {number} direction the direction to check.
+     * @returns {boolean} true if the direction is backwards.
+     */
+    isMovingBackwards(direction) {
+        // Check if trying to move into the previous two segments
+        // Checks previous two to catch fast two direction inputs
+        var next = {
+            x: this._player.position.x,
+            y: this._player.position.y
+        };
+
+        switch (direction) {
+            case cardinal.N:
+                next.y -= 1;
+                break;
+            case cardinal.E:
+                next.x += 1;
+                break;
+            case cardinal.S:
+                next.y += 1;
+                break;
+            case cardinal.W:
+                next.x -= 1;
+                break;
+        }
+
+        var isBackwards = false;
+        for (var i = 0; i < this._player.segments.length && i < 2; i++) {
+            var segment = this._player.segments[i];
+            if (next.x === segment.x && next.y === segment.y) {
+                isBackwards = true;
+                break;
+            }
+        }
+        return isBackwards;
     }
 
     /**
@@ -343,20 +382,9 @@ class GameState extends CoreState {
         if (this._input.keysJustDown['move-left']) {
             direction = cardinal.W;
         }
-        if (direction) {
-            // Prevent moving in the opposite direction
-            if (Math.abs(this._player.direction - direction) !== 2) {
-                this._player.direction = direction;
-                this._delay(() => {
-                    if (!this._socket) return;
-                    this._socket.emit(commands.direct, {
-                        tick: this._tick,
-                        position: this._player.position,
-                        segments: this._player.segments,
-                        direction: direction
-                    });
-                });
-            }
+        // Prevent moving in the opposite direction
+        if (direction && !this.isMovingBackwards(direction)) {
+            this._player.direction = direction;
         }
     }
 
@@ -456,10 +484,10 @@ class GameState extends CoreState {
      * @private
      */
     _simulate() {
-        var index = this._player.index;
+        var position = this._player.position;
 
-        var x = index % this._width;
-        var y = Math.floor(index / this._width);
+        var x = position.x;
+        var y = position.y;
         switch (this._player.direction) {
             case cardinal.N:
                 y -= 1;
@@ -486,17 +514,16 @@ class GameState extends CoreState {
         }
 
         // Update the segments and head
-        /*
-        this._player.segments.unshift(index);
-        this._player.index = y * this._width + x;
+        this._player.segments.unshift({x: position.x, y: position.y});
+        this._player.position.x = x;
+        this._player.position.y = y;
         this._player.segments.pop();
-        */
 
         this._delay(() => {
             if (!this._socket) return;
             this._socket.emit(commands.direct, {
                 tick: this._tick,
-                index: this._player.index,
+                position: this._player.position,
                 segments: this._player.segments,
                 direction: this._player.direction
             });
@@ -512,7 +539,7 @@ class GameState extends CoreState {
 
         // Simulate a tick if a tick has passed
         if (this._timer.isReady()) {
-            //this._simulate();
+            this._simulate();
             this._timer.reset();
         }
 

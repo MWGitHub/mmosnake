@@ -264,7 +264,7 @@ describe('shard', function() {
         var updateListener = function(data) {
             ticks++;
             clientSocket.removeListener('update', updateListener);
-            
+
             clientSocket.emit('direct', {
                 ticks: data.ticks,
                 position: data.position,
