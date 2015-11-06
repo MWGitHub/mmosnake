@@ -10,7 +10,7 @@ import Timer from '../util/timer';
 
 var gridKey = {
     empty: 0,
-    blocked: 1,
+    block: 1,
     food: 2,
     snake: 3
 };
@@ -34,7 +34,8 @@ var debug = {
 };
 
 var commands = {
-    direct: 'direct'
+    direct: 'direct',
+    eat: 'eat'
 };
 
 var receives = {
@@ -273,8 +274,9 @@ class GameState extends CoreState {
                     this._players = data.players;
                     this._tick = data.tick;
 
-                    this._player.position = data.position;
-                    this._player.segments = data.segments;
+                    // Push a segment onto player the player's tail
+                    //this._player.position = data.position;
+                    this._player.segments.push(this._player.segments[this._player.segments.length - 1]);
                 });
             });
             console.log('Connected!');
@@ -429,7 +431,7 @@ class GameState extends CoreState {
             for (var col = 0; col < this._grid[row].length; col++) {
                 var block = null;
                 var key = this._grid[row][col];
-                if (key === gridKey.blocked) {
+                if (key === gridKey.block) {
                     block = new PIXI.Sprite(this._blockTexture);
                 } else if (key === gridKey.food) {
                     block = new PIXI.Sprite(this._foodTexture);
@@ -511,6 +513,18 @@ class GameState extends CoreState {
             y = 0;
         } else if (y >= this._height) {
             y = this._height - 1;
+        }
+
+        var value = this._grid[y][x];
+        // Going to die, stop moving and wait for server signal
+        if (value === gridKey.block) {
+            return;
+        } else if (value === gridKey.food) {
+            // Tell the server you ate something (otherwise client syncing could miss it)
+            this._socket.emit(commands.eat, {
+                x: x,
+                y: y
+            });
         }
 
         // Update the segments and head

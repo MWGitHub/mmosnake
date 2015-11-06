@@ -3,7 +3,7 @@
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
-  "leniency": 10,
+  "leniency": 2,
   "blockWidth": 16,
   "tickRate": 6
 }

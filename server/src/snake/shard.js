@@ -21,7 +21,8 @@ var internals = {
 
     receives: {
         direct: 'direct',
-        ping: 'ping'
+        ping: 'ping',
+        eat: 'eat'
     }
 };
 
@@ -371,14 +372,12 @@ class Shard {
     _direct(player, tick, position, segments, direction) {
         // Remove the player if an invalid direction is given
         if (!_.includes(Grid.Cardinal, direction)) {
-            console.log('invalid');
             this.removePlayer(player);
             return;
         }
 
         // Only change directions if the player has not moved
         if (player.isSamePosition(position)) {
-            console.log('direction changed');
             if (!this.isMovingBackwards(player, direction)) {
                 player.direction = direction;
             }
@@ -388,11 +387,6 @@ class Shard {
             var isOutOfSync = this._tick - tick > this._leniency;
             var isTooFar = distance > this._leniency * this._leniency;
             if (isOutOfSync || isTooFar) {
-                if (isOutOfSync) {
-                    console.log('oos');
-                } else if (isTooFar) {
-                    console.log('too far');
-                }
                 // Ignore new direction if moving backwards (player has old data so client won't check correctly)
                 if (!this.isMovingBackwards(player, direction)) {
                     player.direction = direction;
@@ -401,12 +395,34 @@ class Shard {
                 player.socket.emit(internals.commands.update, this._createPlayerInfo(player, true));
             } else {
                 // Player has moved on the client side within leniency, overwrite server
-                console.log('moved');
                 player.direction = direction;
                 player.lastUpdateTick = tick;
                 player.position = position;
                 player.segments = segments;
             }
+        }
+    }
+
+    /**
+     * Check if a player can eat food at the location.
+     * @param {Player} player the player to check with.
+     * @param {number} x the x location of the food.
+     * @param {number} y the y location of the food.
+     * @private
+     */
+    _eat(player, x, y) {
+        var value = this._grid.getGridValue(x, y);
+        // Already ate it
+        if (value !== internals.keys.food) {
+            return;
+        }
+
+        // Make sure distance is not too far
+        var distance = Math.pow(player.position.x - x, 2) + Math.pow(player.position.y - y, 2);
+        var isTooFar = distance > this._leniency * this._leniency;
+        if (!isTooFar) {
+            // Update the player so the client knows food has been eaten
+            player.socket.emit(internals.commands.ate, this._createPlayerInfo(player, true));
         }
     }
 
@@ -460,6 +476,10 @@ class Shard {
 
         socket.on(internals.receives.direct, (data) => {
             this._direct(player, data.tick, data.position, data.segments, data.direction);
+        });
+
+        socket.on(internals.receives.eat, (data) => {
+            this._eat(player, data.x, data.y);
         });
 
         this._start(player, snake);

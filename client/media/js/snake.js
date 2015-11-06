@@ -4,7 +4,7 @@ module.exports={
   "screenWidth": 21,
   "screenHeight": 15,
   "screenBuffer": 2,
-  "leniency": 10,
+  "leniency": 2,
   "blockWidth": 16,
   "tickRate": 6
 }
@@ -53655,8 +53655,9 @@ var GameState = (function (_CoreState) {
                         _this._players = data.players;
                         _this._tick = data.tick;
 
-                        _this._player.position = data.position;
-                        _this._player.segments = data.segments;
+                        // Push a segment onto player the player's tail
+                        //this._player.position = data.position;
+                        _this._player.segments.push(_this._player.segments[_this._player.segments.length - 1]);
                     });
                 });
                 console.log('Connected!');

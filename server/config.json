@@ -7,5 +7,5 @@
   "screenBuffer": 2,
   "food": 120,
   "tickRate": 6,
-  "leniency": 10
+  "leniency": 2
 }
