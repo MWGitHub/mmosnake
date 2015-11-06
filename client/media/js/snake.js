@@ -53423,9 +53423,10 @@ var GameState = (function (_CoreState) {
      * Creates the game state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to retrieve from.
+     * @param resources the resources for the game.
      */
 
-    function GameState(layer, input) {
+    function GameState(layer, input, resources) {
         _classCallCheck(this, GameState);
 
         _get(Object.getPrototypeOf(GameState.prototype), 'constructor', this).call(this);
@@ -53435,6 +53436,8 @@ var GameState = (function (_CoreState) {
         this._window = window;
         this._layer = layer;
         this._input = input;
+        this._resources = resources;
+
         this._socket = null;
 
         /**
@@ -53518,6 +53521,20 @@ var GameState = (function (_CoreState) {
          * @private
          */
         this._queuedData = [];
+
+        /**
+         * Queue for directional inputs.
+         * @type {Array.<number>}
+         * @private
+         */
+        this._directionQueue = [];
+
+        /**
+         * Number of directions to queue.
+         * @type {number}
+         * @private
+         */
+        this._directionQueueSize = 2;
 
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -53773,8 +53790,12 @@ var GameState = (function (_CoreState) {
                 direction = cardinal.W;
             }
             // Prevent moving in the opposite direction
-            if (direction && !this.isMovingBackwards(direction)) {
-                this._player.direction = direction;
+            if (direction) {
+                // Take out the most recent direction
+                if (this._directionQueue.length >= this._directionQueueSize) {
+                    this._directionQueue.shift();
+                }
+                this._directionQueue.push(direction);
             }
         }
 
@@ -53795,8 +53816,22 @@ var GameState = (function (_CoreState) {
 
             for (var i = 0; i < player.segments.length; i++) {
                 var segment = player.segments[i];
+                var dx = 0;
+                var dy = 0;
+                if (i === 0) {
+                    dx = player.position.x - segment.x;
+                    dy = player.position.y - segment.y;
+                } else {
+                    dx = player.segments[i - 1].x - segment.x;
+                    dy = player.segments[i - 1].y - segment.y;
+                }
+                // Vertical
+                if (dx === 0 && Math.abs(dy) === 1) {
+                    block = new _pixiJs2['default'].Sprite(this._resources['segment-vertical'].texture);
+                } else if (Math.abs(dx) === 1 && dy === 0) {
+                    block = new _pixiJs2['default'].Sprite(this._resources['segment-horizontal'].texture);
+                }
 
-                block = new _pixiJs2['default'].Sprite(this._snakeTexture);
                 block.position.x = segment.x * this._blockWidth;
                 block.position.y = segment.y * this._blockWidth;
                 this._blocks.push(block);
@@ -53883,6 +53918,19 @@ var GameState = (function (_CoreState) {
         key: '_simulate',
         value: function _simulate() {
             var _this2 = this;
+
+            // Get the first valid direction in the queue
+            var direction;
+            var validDirection = false;
+            while (!validDirection && this._directionQueue.length > 0) {
+                direction = this._directionQueue.shift();
+                if (!this.isMovingBackwards(direction)) {
+                    validDirection = true;
+                }
+            }
+            if (validDirection) {
+                this._player.direction = direction;
+            }
 
             var position = this._player.position;
 
@@ -54147,57 +54195,76 @@ var _configJson = require('../config.json');
 
 var _configJson2 = _interopRequireDefault(_configJson);
 
+var _pixiJs = require('pixi.js');
+
+var _pixiJs2 = _interopRequireDefault(_pixiJs);
+
 var CoreCallbacks = _coreCore2['default'].Callbacks;
 
 document.addEventListener('DOMContentLoaded', function () {
-    var elapsed = { elapsed: 0 };
-    _debugDebug2['default'].Globals.instance.addControl(elapsed, 'elapsed', { listen: true });
+    function start(resources) {
+        var elapsed = { elapsed: 0 };
+        _debugDebug2['default'].Globals.instance.addControl(elapsed, 'elapsed', { listen: true });
 
-    // Create the core to update the main loop
-    var core = new _coreCore2['default'](window);
-    core.updateStepSize = 1000 / 60;
-    core.renderStepSize = 1000 / 60;
-    core.allowUpdateSkips = true;
-    core.allowRenderSkips = true;
+        // Create the core to update the main loop
+        var core = new _coreCore2['default'](window);
+        core.updateStepSize = 1000 / 60;
+        core.renderStepSize = 1000 / 60;
+        core.allowUpdateSkips = true;
+        core.allowRenderSkips = true;
 
-    // Intialize the input
-    var input = new _coreInput2['default'](window, document.getElementById('game'));
+        // Intialize the input
+        var input = new _coreInput2['default'](window, document.getElementById('game'));
 
-    // Initialize and add the renderer
-    var layer = new _pixiLayer2['default'](document.getElementById('game'));
-    core.addRenderLayer(layer);
+        // Initialize and add the renderer
+        var layer = new _pixiLayer2['default'](document.getElementById('game'));
+        core.addRenderLayer(layer);
 
-    // Create the state switcher and add the states
-    var stateSwitcher = new _coreStateSwitcher2['default']();
-    core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
-    core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
-    core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-    var startState = new _gameStartState2['default'](window, layer);
-    stateSwitcher.addState(startState);
-    var gameState = new _gameGameState2['default'](layer, input);
-    stateSwitcher.addState(gameState);
-    var endState = new _gameEndState2['default'](window, layer);
-    stateSwitcher.addState(endState);
-    var botState = new _gameBotState2['default'](window, layer);
-    stateSwitcher.addState(botState);
+        // Create the state switcher and add the states
+        var stateSwitcher = new _coreStateSwitcher2['default']();
+        core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
+        core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
+        core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
+        var startState = new _gameStartState2['default'](window, layer);
+        stateSwitcher.addState(startState);
+        var gameState = new _gameGameState2['default'](layer, input, resources);
+        stateSwitcher.addState(gameState);
+        var endState = new _gameEndState2['default'](window, layer);
+        stateSwitcher.addState(endState);
+        var botState = new _gameBotState2['default'](window, layer);
+        stateSwitcher.addState(botState);
 
-    stateSwitcher.enterState(startState);
+        stateSwitcher.enterState(startState);
 
-    // Start the main loop
-    core.start();
-    core.addLoopCallback(CoreCallbacks.preUpdate, function (dt) {
-        input.update();
+        // Start the main loop
+        core.start();
+        core.addLoopCallback(CoreCallbacks.preUpdate, function (dt) {
+            input.update();
+        });
+        core.addLoopCallback(CoreCallbacks.postUpdate, function (dt) {
+            input.flush();
+        });
+        core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
+            elapsed.elapsed = core.timeElapsed;
+        });
+        core.resize(_configJson2['default'].screenWidth * _configJson2['default'].blockWidth, _configJson2['default'].screenHeight * _configJson2['default'].blockWidth);
+    }
+
+    var loader = _pixiJs2['default'].loader;
+    loader.add('segment-southeast', '/media/images/segment-southeast.png');
+    loader.add('segment-southwest', '/media/images/segment-southwest.png');
+    loader.add('segment-northeast', '/media/images/segment-northeast.png');
+    loader.add('segment-northwest', '/media/images/segment-northwest.png');
+    loader.add('segment-horizontal', '/media/images/segment-horizontal.png');
+    loader.add('segment-vertical', '/media/images/segment-vertical.png');
+
+    loader.load(function (loader, resources) {
+        console.log(resources);
+        start(resources);
     });
-    core.addLoopCallback(CoreCallbacks.postUpdate, function (dt) {
-        input.flush();
-    });
-    core.addLoopCallback(CoreCallbacks.postLoop, function (dt) {
-        elapsed.elapsed = core.timeElapsed;
-    });
-    core.resize(_configJson2['default'].screenWidth * _configJson2['default'].blockWidth, _configJson2['default'].screenHeight * _configJson2['default'].blockWidth);
 });
 
-},{"../config.json":1,"./core/core":184,"./core/input":185,"./core/state-switcher":187,"./debug/debug":188,"./game/bot-state":189,"./game/end-state":190,"./game/game-state":191,"./game/start-state":192,"./pixi/layer":195}],194:[function(require,module,exports){
+},{"../config.json":1,"./core/core":184,"./core/input":185,"./core/state-switcher":187,"./debug/debug":188,"./game/bot-state":189,"./game/end-state":190,"./game/game-state":191,"./game/start-state":192,"./pixi/layer":195,"pixi.js":139}],194:[function(require,module,exports){
 "use strict";
 /**
  * Represents a camera.

@@ -421,6 +421,8 @@ class Shard {
         var distance = Math.pow(player.position.x - x, 2) + Math.pow(player.position.y - y, 2);
         var isTooFar = distance > this._leniency * this._leniency;
         if (!isTooFar) {
+            // Remove the food
+            this._grid.setGridValue(x, y, internals.keys.empty);
             // Update the player so the client knows food has been eaten
             player.socket.emit(internals.commands.ate, this._createPlayerInfo(player, true));
         }

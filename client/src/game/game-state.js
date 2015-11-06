@@ -50,8 +50,9 @@ class GameState extends CoreState {
      * Creates the game state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to retrieve from.
+     * @param resources the resources for the game.
      */
-    constructor(layer, input) {
+    constructor(layer, input, resources) {
         super();
 
         this.type = 'GameState';
@@ -59,6 +60,8 @@ class GameState extends CoreState {
         this._window = window;
         this._layer = layer;
         this._input = input;
+        this._resources = resources;
+
         this._socket = null;
 
         /**
@@ -142,6 +145,20 @@ class GameState extends CoreState {
          * @private
          */
         this._queuedData = [];
+
+        /**
+         * Queue for directional inputs.
+         * @type {Array.<number>}
+         * @private
+         */
+        this._directionQueue = [];
+
+        /**
+         * Number of directions to queue.
+         * @type {number}
+         * @private
+         */
+        this._directionQueueSize = 2;
 
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -385,8 +402,12 @@ class GameState extends CoreState {
             direction = cardinal.W;
         }
         // Prevent moving in the opposite direction
-        if (direction && !this.isMovingBackwards(direction)) {
-            this._player.direction = direction;
+        if (direction) {
+            // Take out the most recent direction
+            if (this._directionQueue.length >= this._directionQueueSize) {
+                this._directionQueue.shift();
+            }
+            this._directionQueue.push(direction);
         }
     }
 
@@ -405,8 +426,23 @@ class GameState extends CoreState {
 
         for (var i = 0; i < player.segments.length; i++) {
             var segment = player.segments[i];
+            var dx = 0;
+            var dy = 0;
+            if (i === 0) {
+                dx = player.position.x - segment.x;
+                dy = player.position.y - segment.y;
+            } else {
+                dx = player.segments[i - 1].x - segment.x;
+                dy = player.segments[i - 1].y - segment.y;
+            }
+            // Vertical
+            if (dx === 0 && Math.abs(dy) === 1) {
+                block = new PIXI.Sprite(this._resources['segment-vertical'].texture);
+            } else if (Math.abs(dx) === 1 && dy === 0) {
+                block = new PIXI.Sprite(this._resources['segment-horizontal'].texture);
+            }
 
-            block = new PIXI.Sprite(this._snakeTexture);
+
             block.position.x = segment.x * this._blockWidth;
             block.position.y = segment.y * this._blockWidth;
             this._blocks.push(block);
@@ -486,6 +522,19 @@ class GameState extends CoreState {
      * @private
      */
     _simulate() {
+        // Get the first valid direction in the queue
+        var direction;
+        var validDirection = false;
+        while (!validDirection && this._directionQueue.length > 0) {
+            direction = this._directionQueue.shift();
+            if (!this.isMovingBackwards(direction)) {
+                validDirection = true;
+            }
+        }
+        if (validDirection) {
+            this._player.direction = direction;
+        }
+
         var position = this._player.position;
 
         var x = position.x;
