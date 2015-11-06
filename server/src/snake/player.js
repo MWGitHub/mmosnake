@@ -35,10 +35,13 @@ class Player {
         this.lastUpdateTick = 0;
 
         /**
-         * Position of the snake on the grid.
-         * @type {number}
+         * Position of the snake head.
+         * @type {{x: number, y: number}}
          */
-        this.index = 0;
+        this.position = {
+            x: 0,
+            y: 0
+        };
 
         /**
          * Direction the snake is facing.
@@ -48,7 +51,7 @@ class Player {
 
         /**
          * Segments of the player.
-         * @type {Array}
+         * @type {Array.<{x: number, y: number}>}
          */
         this.segments = [];
 
@@ -57,6 +60,15 @@ class Player {
          * @type {boolean}
          */
         this.isAlive = true;
+    }
+
+    /**
+     * Checks if a value is in the same position as the snake head.
+     * @param {{x: number, y: number}} v the coordinate to check.
+     * @returns {boolean} true if in the same position.
+     */
+    isSamePosition(v) {
+        return this.position.x === v.x && this.position.y === v.y;
     }
 
     get socket() {

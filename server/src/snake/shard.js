@@ -5,11 +5,17 @@ var Logger = require('../util/logger');
 var Player = require('./player');
 
 var internals = {
+    keys: {
+        empty: 0,
+        block: 1,
+        food: 2,
+        snake: 3
+    },
+
     commands: {
         start: 'start',
         die: 'die',
         update: 'update',
-        restart: 'restart',
         ate: 'ate'
     },
 
@@ -22,11 +28,17 @@ var internals = {
 /**
  * Get a random starting position.
  * @param {Grid} grid the grid to find the starting conditions with.
- * @returns {{index: *, direction: string}}
+ * @returns {{x: number, y: number, direction: string}}
  */
 internals.getStart = function(grid) {
+    var coords = grid.getRandomEmptySpace();
+    if (!coords) {
+        coords.x = 0;
+        coords.y = 0;
+    }
     return {
-        index: grid.getRandomEmptySpace(),
+        x: coords.x,
+        y: coords.y,
         direction: Grid.Cardinal.E
     };
 };
@@ -39,8 +51,8 @@ internals.getStart = function(grid) {
  */
 internals.createFood = function(grid, blockers) {
     var empty = blockers.getRandomEmptySpace();
-    if (empty >= 0) {
-        grid.setGridValue(empty, Grid.Keys.food);
+    if (empty) {
+        grid.setGridValue(empty.x, empty.y, internals.keys.food);
         return true;
     }
 
@@ -48,27 +60,23 @@ internals.createFood = function(grid, blockers) {
 };
 
 /**
- * Creates an array with blocking objects.
+ * Creates a grid with blocking objects.
  * @param {number} width the width of the grid.
  * @param {number} height the height of the grid.
  * @param players the players to set blocking areas.
  */
-internals.createBlockersArray = function(width, height, players) {
-    var array = [];
-    var i;
-    for (i = 0; i < width * height; i++) {
-        array.push(0);
-    }
+internals.createBlockersGrid = function(width, height, players) {
+    var grid = new Grid(width, height);
     for (var key in players) {
         if (!players.hasOwnProperty(key)) continue;
         var player = players[key];
 
-        array[player.index] = Grid.Keys.snake;
-        for (i = 0; i < player.segments.length; i++) {
-            array[player.segments[i]] = Grid.Keys.snake;
+        grid.setGridValue(player.position.x, player.position.y, internals.keys.snake);
+        for (var i = 0; i < player.segments.length; i++) {
+            grid.setGridValue(player.segments[i].x, player.segments[i].y, internals.keys.snake);
         }
     }
-    return array;
+    return grid;
 };
 
 class Shard {
@@ -137,13 +145,6 @@ class Shard {
         this._grid = new Grid(width, height, true);
 
         /**
-         * Number of food on the board.
-         * @type {number}
-         * @private
-         */
-        this._food = 0;
-
-        /**
          * Current server tick.
          * @type {number}
          * @private
@@ -156,13 +157,9 @@ class Shard {
      */
     setup() {
         // Create the initial food
-        var blockers =internals.createBlockersArray(this._grid.width, this._grid.height, this._players);
-        console.log(blockers);
+        var blockers = internals.createBlockersGrid(this._grid.width, this._grid.height, this._players);
         for (var i = 0; i < this.foodLimit; i++) {
-            var created = internals.createFood(this._grid, this._grid.merge(blockers));
-            if (created) {
-                this._food++;
-            }
+            internals.createFood(this._grid, this._grid.merge(blockers));
         }
     }
 
@@ -195,15 +192,17 @@ class Shard {
      * @private
      */
     _createPlayerInfo(player, isForced) {
-        var subgridBounds = this._grid.getSubgridBounds(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
-        var grid = this._grid.getGridArray(player.index, this._screenWidth, this._screenHeight, this._screenBuffer);
+        var subgridBounds = this._grid.getSubgridBounds(player.position.x, player.position.y,
+            this._screenWidth, this._screenHeight, this._screenBuffer);
+        var grid = this._grid.getGridArray(player.position.x, player.position.y,
+            this._screenWidth, this._screenHeight, this._screenBuffer);
 
         var players = [];
         _.forEach(this._players, (player) => {
             if (player.isAlive) {
                 players.push({
                     id: player.id,
-                    index: player.index,
+                    position: player.position,
                     segments: player.segments,
                     isAlive: player.isAlive,
                     direction: player.direction
@@ -213,16 +212,17 @@ class Shard {
 
         return {
             id: player.id,
+            position: player.position,
+            segments: player.segments,
+            isAlive: player.isAlive,
+            direction: player.direction,
+
             players: players,
             grid: grid,
             width: this._grid.width,
             height: this._grid.height,
             tick: this._tick,
             subgridBounds: subgridBounds,
-            segments: player.segments,
-            index: player.index,
-            isAlive: player.isAlive,
-            direction: player.direction,
             isForced: isForced
         };
     }
@@ -248,11 +248,6 @@ class Shard {
      * @private
      */
     _die(player) {
-        // Empty the grid indices with the snake segments
-        for (var i = 0; i < player.segments.length; i++) {
-            this._grid.setGridValue(player.segments[i], Grid.Keys.empty);
-        }
-        this._grid.setGridValue(player.index, Grid.Keys.empty);
         player.isAlive = false;
         player.socket.emit(internals.commands.die, {
             score: player.segments.length
@@ -266,53 +261,49 @@ class Shard {
     _move(player) {
         var grid = this._grid;
 
-        var index = player.index;
+        var currentPosition = player.position;
         var direction = player.direction;
-        var nextIndex = grid.getIndexInDirection(index, direction);
-        // Check the value of the next move index
-        var value = grid.getValueInDirection(index, direction);
-        var hitSnake = false;
+        // Get the position the player will move in
+        var nextPosition = grid.getCoordinatesInDirection(currentPosition.x, currentPosition.y, direction);
+
         // Check if any snakes hit
+        var hitSnake = false;
         for (var key in this._players) {
+            if (!this._players.hasOwnProperty(key) || this._players[key].id === player.id) continue;
             var snake = this._players[key];
-            if (nextIndex === snake.index) {
+            if (snake.isSamePosition(nextPosition)) {
                 hitSnake = true;
                 break;
             }
             for (var i = 0; i < snake.segments.length; i++) {
-                if (nextIndex === snake.segments[i]) {
+                if (nextPosition.x === snake.segments[i].x && nextPosition.y === snake.segments[i].y) {
                     hitSnake = true;
                     break;
                 }
             }
             if (hitSnake) break;
         }
-        // Die if the walls or other snakes are hit
-        if (value < 0 || value === Grid.Keys.blocked || hitSnake) {
+
+        // Die if the walls or other snakes are hit when moved
+        var nextValue = grid.getValueInDirection(currentPosition.x, currentPosition.y, direction);
+        if (nextValue === null || nextValue === internals.keys.block || hitSnake) {
             this._die(player);
-        } else if (value === Grid.Keys.empty || value === Grid.Keys.food) {
+        } else if (nextValue === internals.keys.empty || nextValue === internals.keys.food) {
             // Add the previous head position to the front of the segment array
-            player.segments.unshift(player.index);
+            player.segments.unshift({x: currentPosition.x, y: currentPosition.y});
 
             // Get the value of the new head position
-            player.index = grid.getIndexInDirection(index, direction);
+            player.position.x = nextPosition.x;
+            player.position.y = nextPosition.y;
             // Remove the tail if no food has been eaten
-            if (value !== Grid.Keys.food) {
-                var removed = player.segments.pop();
-                // Do not empty if any segments are in the tail index
-                /*
-                var anyLeft = player.segments.indexOf(removed) >= 0;
-                if (!anyLeft) {
-                    grid.setGridValue(removed, Grid.Keys.empty);
-                }
-                */
+            if (nextValue !== internals.keys.food) {
+                player.segments.pop();
             } else {
-                this._food -= 1;
+                // Remove the food from the grid
+                this._grid.setGridValue(nextPosition.x, nextPosition.y, internals.keys.empty);
                 // Update the player so the client knows food has been eaten
                 player.socket.emit(internals.commands.ate, this._createPlayerInfo(player, true));
             }
-            // Make the current head position an occupied space to prevent food spawn there
-            //grid.setValueInDirection(index, direction, Grid.Keys.snake);
         }
     }
 
@@ -331,48 +322,16 @@ class Shard {
         });
 
         // Regenerate food that was eaten or blocked
-        var blockers = this._grid.merge(internals.createBlockersArray(this._grid.width, this._grid.height, this._players));
-        var diff = this.foodLimit - this._food;
+        var diff = this.foodLimit - this.foodCount;
+        var blockers = internals.createBlockersGrid(this._grid.width, this._grid.height, this._players);
         for (var i = 0; i < diff; i++) {
-            var created = internals.createFood(this._grid, blockers);
-            if (created) {
-                this._food++;
-            }
+            internals.createFood(this._grid, this._grid.merge(blockers));
         }
 
         // Update the grid of every player
         _.forEach(this._players, (player) => {
             this._updatePlayer(player, false);
         });
-    }
-
-    /**
-     * Starts the player and adds them to the game.
-     * @param {Player} player the player to start.
-     * @param {*=} snake an optional snake object to start as.
-     * @private
-     */
-    _start(player, snake) {
-        // Set the starting positions and segments for the snake
-        if (snake) {
-            player.index= snake.index;
-            player.direction = snake.direction;
-            player.segments = [].concat(snake.segments);
-            player.isAlive = snake.isAlive;
-            this._grid.setGridValue(snake.index, Grid.Keys.snake);
-        } else {
-            // Retrieve an empty starting position
-            var blockers = internals.createBlockersArray(this._grid.width, this._grid.height, this._players);
-            var start = internals.getStart(this._grid.merge(blockers));
-            player.index = start.index;
-            player.direction = start.direction;
-            player.segments = [start.index, start.index, start.index];
-            player.isAlive = true;
-            this._grid.setGridValue(start.index, Grid.Keys.snake);
-        }
-        player.lastUpdateTick = this._tick;
-
-        player.socket.emit(internals.commands.start, this._createPlayerInfo(player, true));
     }
 
     /**
@@ -383,7 +342,7 @@ class Shard {
      * @returns {boolean} true if the directions are opposite.
      */
     _isOppositeDirection(player, d1, d2) {
-        // Check if trying to move into the previous segment (happens when moving too fast)
+        // Check if trying to move into the previous segment (happens when multiple times between ticks)
         var next = this._grid.getIndexInDirection(player.index, d1);
         if (player.segments.length > 0 && player.segments[0] === next) {
             return true;
@@ -443,6 +402,35 @@ class Shard {
     }
 
     /**
+     * Starts the player and adds them to the game.
+     * @param {Player} player the player to start.
+     * @param {*=} snake an optional snake object to start as.
+     * @private
+     */
+    _start(player, snake) {
+        // Set the starting positions and segments for the snake
+        if (snake) {
+            player.position.x = snake.position.x;
+            player.position.y = snake.position.y;
+            player.direction = snake.direction;
+            player.segments = [].concat(snake.segments);
+            player.isAlive = snake.isAlive;
+        } else {
+            // Retrieve an empty starting position
+            var blockers = internals.createBlockersGrid(this._grid.width, this._grid.height, this._players);
+            var start = internals.getStart(this._grid.merge(blockers));
+            player.position.x = start.x;
+            player.position.y = start.y;
+            player.direction = start.direction;
+            player.segments = [{x: start.x, y: start.y}, {x: start.x, y: start.y}, {x: start.x, y: start.y}];
+            player.isAlive = true;
+        }
+        player.lastUpdateTick = this._tick;
+
+        player.socket.emit(internals.commands.start, this._createPlayerInfo(player, true));
+    }
+
+    /**
      * Adds a socket with an optional snake object to start as.
      * @param socket the socket to add.
      * @param {*=} snake the snake to start as, otherwise create new.
@@ -461,10 +449,6 @@ class Shard {
             Logger.info('User disconnected');
         });
 
-        socket.on(internals.commands.restart, () => {
-            this._start(player);
-        });
-
         socket.on(internals.receives.direct, (data) => {
             this._direct(player, data.tick, data.index, data.segments, data.direction);
         });
@@ -480,10 +464,32 @@ class Shard {
         delete this._players[id];
     }
 
+    /**
+     * Retrieves the number of players in the shard.
+     * @returns {Number}
+     */
     get playerCount() {
         return Object.keys(this._players).length;
     }
 
+    /**
+     * Retrieves the number of food in the shard.
+     * @returns {number}
+     */
+    get foodCount() {
+        return this._grid.reduce((s, v) => {
+            if (v === internals.keys.food) {
+                return s + 1;
+            } else {
+                return s;
+            }
+        });
+    }
+
+    /**
+     * Retrieves the grid array of the shard.
+     * @returns {Array.<number>}
+     */
     getGridArray() {
         return this._grid.getGridArray();
     }

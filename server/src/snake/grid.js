@@ -335,6 +335,24 @@ class Grid {
     get height() {
         return this._height;
     }
+
+    /**
+     * Outputs the grid as a formatted string.
+     * @returns {string}
+     */
+    toString() {
+        var out = '';
+        for (var row = 0; row < this._grid.length; row++) {
+            for (var col = 0; col < this._grid[row].length; col++) {
+                if (col !== this._grid[row].length - 1) {
+                    out += this._grid[row][col] + ' ';
+                } else {
+                    out += this._grid[row][col] + '\n';
+                }
+            }
+        }
+        return out;
+    }
 }
 
 Grid.Cardinal = Object.assign({}, internals.cardinal);

@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var internals = {
     id: 0
 };
