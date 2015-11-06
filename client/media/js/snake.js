@@ -53079,9 +53079,10 @@ var BotState = (function (_CoreState) {
      * Creates the game state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to get key events from.
+     * @param resources
      */
 
-    function BotState(layer, input) {
+    function BotState(layer, input, resources) {
         _classCallCheck(this, BotState);
 
         _get(Object.getPrototypeOf(BotState.prototype), 'constructor', this).call(this);
@@ -53090,6 +53091,7 @@ var BotState = (function (_CoreState) {
 
         this._input = input;
         this._layer = layer;
+        this._resources = resources;
         this._sockets = [];
 
         this._container = null;
@@ -53178,23 +53180,28 @@ var BotState = (function (_CoreState) {
 
             var text = new _pixiJs2['default'].Text('UP to add bots\nDOWN to remove bots\nLEFT to decrease bot rate\nRIGHT to increase bot rate', {
                 font: 'bold 16px Arial',
-                fill: "#FFFFFF"
+                fill: "#000000"
             });
             this._container.addChild(text);
 
             this._numBotsText = new _pixiJs2['default'].Text('Bots: ' + this._numBots, {
                 font: 'bold 16px Arial',
-                fill: '#FFFFFF'
+                fill: '#000000'
             });
             this._numBotsText.position.y = 100;
             this._container.addChild(this._numBotsText);
 
             this._botRateText = new _pixiJs2['default'].Text('Bot rate: ' + this._botRate, {
                 font: 'bold 16px Arial',
-                fill: '#FFFFFF'
+                fill: '#000000'
             });
             this._botRateText.position.y = 120;
             this._container.addChild(this._botRateText);
+
+            var overlayScreen = new _pixiJs2['default'].Sprite(this._resources['screen-pattern'].texture);
+            overlayScreen.position.x = 0;
+            overlayScreen.position.y = 0;
+            this._container.addChild(overlayScreen);
         }
     }, {
         key: 'update',
@@ -53270,9 +53277,10 @@ var EndState = (function (_CoreState) {
      * Creates the end state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to attach events to.
+     * @param resources
      */
 
-    function EndState(layer, input) {
+    function EndState(layer, input, resources) {
         _classCallCheck(this, EndState);
 
         _get(Object.getPrototypeOf(EndState.prototype), 'constructor', this).call(this);
@@ -53281,6 +53289,7 @@ var EndState = (function (_CoreState) {
 
         this._layer = layer;
         this._input = input;
+        this._resources = resources;
 
         this._container = null;
     }
@@ -53293,12 +53302,17 @@ var EndState = (function (_CoreState) {
             this._layer.addChild(this._container);
 
             var text = new _pixiJs2['default'].Text('Score\n' + options.score + '\nPress R to restart', {
-                fill: "#FFFFFF",
+                fill: "#000000",
                 align: 'center'
             });
             text.position.x = 60;
             text.position.y = 50;
             this._container.addChild(text);
+
+            var overlayScreen = new _pixiJs2['default'].Sprite(this._resources['screen-pattern'].texture);
+            overlayScreen.position.x = 0;
+            overlayScreen.position.y = 0;
+            this._container.addChild(overlayScreen);
         }
     }, {
         key: 'update',
@@ -54214,9 +54228,10 @@ var StartState = (function (_CoreState) {
      * Creates the end state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to attach events to.
+     * @param resources
      */
 
-    function StartState(layer, input) {
+    function StartState(layer, input, resources) {
         _classCallCheck(this, StartState);
 
         _get(Object.getPrototypeOf(StartState.prototype), 'constructor', this).call(this);
@@ -54225,6 +54240,7 @@ var StartState = (function (_CoreState) {
 
         this._input = input;
         this._layer = layer;
+        this._resources = resources;
 
         this._container = null;
     }
@@ -54237,12 +54253,17 @@ var StartState = (function (_CoreState) {
             this._layer.addChild(this._container);
 
             var text = new _pixiJs2['default'].Text('Press R to start\nPress B to enter bot mode', {
-                fill: "#FFFFFF",
+                fill: "#000000",
                 align: 'center'
             });
             text.position.x = 2;
             text.position.y = 50;
             this._container.addChild(text);
+
+            var overlayScreen = new _pixiJs2['default'].Sprite(this._resources['screen-pattern'].texture);
+            overlayScreen.position.x = 0;
+            overlayScreen.position.y = 0;
+            this._container.addChild(overlayScreen);
         }
     }, {
         key: 'update',
@@ -54349,13 +54370,13 @@ document.addEventListener('DOMContentLoaded', function () {
         core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-        var startState = new _gameStartState2['default'](layer, input);
+        var startState = new _gameStartState2['default'](layer, input, resources);
         stateSwitcher.addState(startState);
         var gameState = new _gameGameState2['default'](layer, input, resources);
         stateSwitcher.addState(gameState);
-        var endState = new _gameEndState2['default'](layer, input);
+        var endState = new _gameEndState2['default'](layer, input, resources);
         stateSwitcher.addState(endState);
-        var botState = new _gameBotState2['default'](layer, input);
+        var botState = new _gameBotState2['default'](layer, input, resources);
         stateSwitcher.addState(botState);
 
         stateSwitcher.enterState(startState);

@@ -39,13 +39,13 @@ document.addEventListener('DOMContentLoaded', function() {
         core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-        var startState = new StartState(layer, input);
+        var startState = new StartState(layer, input, resources);
         stateSwitcher.addState(startState);
         var gameState = new GameState(layer, input, resources);
         stateSwitcher.addState(gameState);
-        var endState = new EndState(layer, input);
+        var endState = new EndState(layer, input, resources);
         stateSwitcher.addState(endState);
-        var botState = new BotState(layer, input);
+        var botState = new BotState(layer, input, resources);
         stateSwitcher.addState(botState);
 
         stateSwitcher.enterState(startState);

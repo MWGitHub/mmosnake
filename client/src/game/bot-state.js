@@ -19,14 +19,16 @@ class BotState extends CoreState {
      * Creates the game state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to get key events from.
+     * @param resources
      */
-    constructor(layer, input) {
+    constructor(layer, input, resources) {
         super();
 
         this.type = 'BotState';
 
         this._input = input;
         this._layer = layer;
+        this._resources = resources;
         this._sockets = [];
 
         this._container = null;
@@ -106,23 +108,28 @@ class BotState extends CoreState {
 
         var text = new PIXI.Text('UP to add bots\nDOWN to remove bots\nLEFT to decrease bot rate\nRIGHT to increase bot rate', {
             font: 'bold 16px Arial',
-            fill: "#FFFFFF"
+            fill: "#000000"
         });
         this._container.addChild(text);
 
         this._numBotsText = new PIXI.Text('Bots: ' + this._numBots, {
             font: 'bold 16px Arial',
-            fill: '#FFFFFF'
+            fill: '#000000'
         });
         this._numBotsText.position.y = 100;
         this._container.addChild(this._numBotsText);
 
         this._botRateText = new PIXI.Text('Bot rate: ' + this._botRate, {
             font: 'bold 16px Arial',
-            fill: '#FFFFFF'
+            fill: '#000000'
         });
         this._botRateText.position.y = 120;
         this._container.addChild(this._botRateText);
+
+        var overlayScreen = new PIXI.Sprite(this._resources['screen-pattern'].texture);
+        overlayScreen.position.x = 0;
+        overlayScreen.position.y = 0;
+        this._container.addChild(overlayScreen);
     }
 
     update(dt) {

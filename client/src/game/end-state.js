@@ -8,14 +8,16 @@ class EndState extends CoreState {
      * Creates the end state.
      * @param {RenderLayer} layer the layer to add children to.
      * @param {Input} input the input to attach events to.
+     * @param resources
      */
-    constructor(layer, input) {
+    constructor(layer, input, resources) {
         super();
 
         this.type = 'EndState';
 
         this._layer = layer;
         this._input = input;
+        this._resources = resources;
 
         this._container = null;
     }
@@ -26,12 +28,17 @@ class EndState extends CoreState {
         this._layer.addChild(this._container);
 
         var text = new PIXI.Text('Score\n' + options.score + '\nPress R to restart', {
-            fill: "#FFFFFF",
+            fill: "#000000",
             align: 'center'
         });
         text.position.x = 60;
         text.position.y = 50;
         this._container.addChild(text);
+
+        var overlayScreen = new PIXI.Sprite(this._resources['screen-pattern'].texture);
+        overlayScreen.position.x = 0;
+        overlayScreen.position.y = 0;
+        this._container.addChild(overlayScreen);
     }
 
     update(dt) {
