@@ -111,6 +111,31 @@ describe('shard', function() {
         var ticks = 0;
         clientSocket.on('update', function() {
             ticks++;
+            if (ticks <= 3 + shard.grace) {
+                shard.tick();
+            }
+        });
+        clientSocket.on('die', function() {
+            assert.equal(ticks, 3 + shard.grace);
+            done();
+        });
+
+        serverSocket.link(clientSocket);
+        shard.addSocket(serverSocket, defaultStart);
+        ticks++;
+        shard.tick();
+    });
+
+    it('should kill player when running into a wall without grace', function(done) {
+        var shard = new Shard(defaultDimensions, defaultDimensions);
+        shard.grace = 0;
+        shard.setup();
+        var serverSocket = new Socket();
+        var clientSocket = new Socket();
+
+        var ticks = 0;
+        clientSocket.on('update', function() {
+            ticks++;
             if (ticks <= 3) {
                 shard.tick();
             }
@@ -187,6 +212,7 @@ describe('shard', function() {
         };
 
         var shard = new Shard(7, 7);
+        shard.grace = 0;
         shard.setup();
         var serverSocket = new Socket();
         var clientSocket = new Socket();
@@ -256,6 +282,7 @@ describe('shard', function() {
         // 1 1 1 1 1
         // 4 ticks to die
         var shard = new Shard(defaultDimensions, defaultDimensions);
+        shard.grace = 2;
         shard.setup();
         var serverSocket = new Socket();
         var clientSocket = new Socket();
@@ -282,7 +309,7 @@ describe('shard', function() {
         clientSocket.on('update', updateListener);
 
         clientSocket.on('die', function() {
-            assert.equal(ticks, 4);
+            assert.equal(ticks, 4 + shard.grace);
             done();
         });
 

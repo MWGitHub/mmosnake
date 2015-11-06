@@ -53816,22 +53816,40 @@ var GameState = (function (_CoreState) {
 
             for (var i = 0; i < player.segments.length; i++) {
                 var segment = player.segments[i];
-                var dx = 0;
-                var dy = 0;
+                var dxPrev = 0;
+                var dyPrev = 0;
+                var dxNext = 0;
+                var dyNext = 0;
                 if (i === 0) {
-                    dx = player.position.x - segment.x;
-                    dy = player.position.y - segment.y;
+                    dxPrev = player.position.x - segment.x;
+                    dyPrev = player.position.y - segment.y;
                 } else {
-                    dx = player.segments[i - 1].x - segment.x;
-                    dy = player.segments[i - 1].y - segment.y;
+                    dxPrev = player.segments[i - 1].x - segment.x;
+                    dyPrev = player.segments[i - 1].y - segment.y;
                 }
-                // Vertical
-                if (dx === 0 && Math.abs(dy) === 1) {
-                    block = new _pixiJs2['default'].Sprite(this._resources['segment-vertical'].texture);
-                } else if (Math.abs(dx) === 1 && dy === 0) {
-                    block = new _pixiJs2['default'].Sprite(this._resources['segment-horizontal'].texture);
+                if (i < player.segments.length - 1) {
+                    dxNext = player.segments[i + 1].x - segment.x;
+                    dyNext = player.segments[i + 1].y - segment.y;
+                }
+                var sumX = dxPrev + dxNext;
+                var sumY = dyNext + dyNext;
+
+                var resource = 'segment-vertical';
+                if (sumX === 0 && dyPrev !== dyNext) {
+                    resource = 'segment-vertical';
+                } else if (dxPrev !== dxNext && sumY === 0) {
+                    resource = 'segment-horizontal';
+                } else if (sumX < 0 && sumY > 0) {
+                    resource = 'segment-southwest';
+                } else if (sumX > 0 && sumY > 0) {
+                    resource = 'segment-southeast';
+                } else if (sumX < 0 && sumY < 0) {
+                    resource = 'segment-northwest';
+                } else if (sumX > 0 && sumY < 0) {
+                    resource = 'segment-northeast';
                 }
 
+                block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
                 block.position.x = segment.x * this._blockWidth;
                 block.position.y = segment.y * this._blockWidth;
                 this._blocks.push(block);
@@ -53964,6 +53982,12 @@ var GameState = (function (_CoreState) {
             var value = this._grid[y - this._subgridBounds.y1][x - this._subgridBounds.x1];
             // Going to die, stop moving and wait for server signal
             if (value === gridKey.block) {
+                this._socket.emit(commands.direct, {
+                    tick: this._tick,
+                    position: this._player.position,
+                    segments: this._player.segments,
+                    direction: this._player.direction
+                });
                 return;
             } else if (value === gridKey.food) {
                 // Tell the server you ate something (otherwise client syncing could miss it)

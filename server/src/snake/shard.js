@@ -104,6 +104,12 @@ class Shard {
         this.tickRate = 6;
 
         /**
+         * Grace period before hitting a wall would kill the player.
+         * @type {number}
+         */
+        this.grace = 1;
+
+        /**
          * Width of the game screen.
          * @type {number}
          * @private
@@ -292,9 +298,18 @@ class Shard {
 
         // Die if the walls or other snakes are hit when moved
         var nextValue = grid.getValueInDirection(currentPosition.x, currentPosition.y, direction);
-        if (nextValue === null || nextValue === internals.keys.block || hitSnake) {
+        if (nextValue === null || hitSnake) {
             this._die(player);
+        } else if (nextValue === internals.keys.block) {
+            if (player.graceCounter >= this.grace) {
+                this._die(player);
+            } else {
+                player.graceCounter++;
+            }
         } else if (nextValue === internals.keys.empty || nextValue === internals.keys.food) {
+            // Reset grace period
+            player.graceCounter = 0;
+
             // Add the previous head position to the front of the segment array
             player.segments.unshift({x: currentPosition.x, y: currentPosition.y});
 

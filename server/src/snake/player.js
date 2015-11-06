@@ -60,6 +60,12 @@ class Player {
          * @type {boolean}
          */
         this.isAlive = true;
+
+        /**
+         * Counter for the grace amount.
+         * @type {number}
+         */
+        this.graceCounter = 0;
     }
 
     /**
