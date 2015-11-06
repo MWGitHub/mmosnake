@@ -1,41 +1,29 @@
 "use strict";
 import CoreState from '../core/core-state';
+import Input from '../core/input';
 import PIXI from 'pixi.js';
 
 class StartState extends CoreState {
     /**
      * Creates the end state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to attach events to.
      */
-    constructor(window, layer) {
+    constructor(layer, input) {
         super();
 
         this.type = 'StartState';
 
-        this._window = window;
+        this._input = input;
         this._layer = layer;
 
         this._container = null;
-
-        this._keyDown = this._onKeyDown.bind(this);
-    }
-
-    _onKeyDown(e) {
-        var key = e.key || e.keyIdentifier || e.keyCode;
-        if (key === 'U+0052') {
-            this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
-        } else if (key === 'U+0042') {
-            console.log('s');
-            this.switcher.switchState(this, this.switcher.retrieveState('BotState'));
-        }
     }
 
     onEnter() {
         console.log('entering start state');
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
-        this._window.addEventListener('keydown', this._keyDown);
 
         var text = new PIXI.Text('press R to start\npress B to enter bot mode', {
             fill: "#FFFFFF",
@@ -47,6 +35,11 @@ class StartState extends CoreState {
     }
 
     update(dt) {
+        if (this._input.keysJustDown[Input.CharToKeyCode('R')]) {
+            this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+        } else if (this._input.keysJustDown[Input.CharToKeyCode('B')]) {
+            this.switcher.switchState(this, this.switcher.retrieveState('BotState'));
+        }
     }
 
     preRender() {
@@ -54,7 +47,6 @@ class StartState extends CoreState {
 
     onLeave() {
         console.log('leaving start state');
-        this._window.removeEventListener('keydown', this._keyDown);
 
         this._layer.removeChild(this._container);
     }

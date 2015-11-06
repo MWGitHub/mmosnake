@@ -1,5 +1,6 @@
 "use strict";
 import CoreState from '../core/core-state';
+import Input from '../core/input';
 import io from 'socket.io-client';
 import Debug from '../debug/debug';
 import _ from 'lodash';
@@ -16,15 +17,15 @@ var cardinal = {
 class BotState extends CoreState {
     /**
      * Creates the game state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to get key events from.
      */
-    constructor(window, layer) {
+    constructor(layer, input) {
         super();
 
         this.type = 'BotState';
 
-        this._window = window;
+        this._input = input;
         this._layer = layer;
         this._sockets = [];
 
@@ -37,8 +38,6 @@ class BotState extends CoreState {
 
         this._updateRate = 1000 / 5;
         this._currentTimer = 0;
-
-        this._keyDown = this._onKeyDown.bind(this);
     }
 
     _updateNumBotsText() {
@@ -76,29 +75,24 @@ class BotState extends CoreState {
         this._sockets.push(socket);
     }
 
-    _onKeyDown(e) {
-        var key = e.key || e.keyIdentifier || e.keyCode;
-        // Prevent spamming emits
-        if (this._previousKeyDown === key) return;
-        switch (key) {
-            case 'Up':
-                this._createBot();
-                break;
-            case 'Right':
-                this._botRate++;
+    _checkKeys() {
+        if (this._input.keysJustDown[Input.CharCodes.Up]) {
+            this._createBot();
+        }
+        if (this._input.keysJustDown[Input.CharCodes.Right]) {
+            this._botRate++;
+            this._updateBotRateText();
+        }
+        if (this._input.keysJustDown[Input.CharCodes.Down]) {
+            if (this._sockets.length > 0) {
+                this._removeBot(this._sockets[0]);
+            }
+        }
+        if (this._input.keysJustDown[Input.CharCodes.Left]) {
+            if (this._botRate > 0) {
+                this._botRate -= 1;
                 this._updateBotRateText();
-                break;
-            case 'Down':
-                if (this._sockets.length > 0) {
-                    this._removeBot(this._sockets[0]);
-                }
-                break;
-            case 'Left':
-                if (this._botRate > 0) {
-                    this._botRate -= 1;
-                    this._updateBotRateText();
-                }
-                break;
+            }
         }
     }
 
@@ -106,8 +100,6 @@ class BotState extends CoreState {
         console.log('entering bot state');
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
-
-        this._window.addEventListener('keydown', this._keyDown);
 
         this._numBots = 0;
         this._botRate = 0;
@@ -134,6 +126,7 @@ class BotState extends CoreState {
     }
 
     update(dt) {
+        this._checkKeys();
         if (this._currentTimer > this._updateRate) {
             this._currentTimer = 0;
             // Randomly direct the bots
@@ -153,7 +146,6 @@ class BotState extends CoreState {
 
     onLeave() {
         console.log('leaving bot state');
-        this._window.removeEventListener('keydown', this._keyDown);
 
         for (var i = 0; i < this._sockets.length; i++) {
             this._sockets[i].disconnect();

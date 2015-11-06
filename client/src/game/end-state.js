@@ -1,38 +1,29 @@
 "use strict";
 import CoreState from '../core/core-state';
+import Input from '../core/input';
 import PIXI from 'pixi.js';
 
 class EndState extends CoreState {
     /**
      * Creates the end state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to attach events to.
      */
-    constructor(window, layer) {
+    constructor(layer, input) {
         super();
 
         this.type = 'EndState';
 
-        this._window = window;
         this._layer = layer;
+        this._input = input;
 
         this._container = null;
-
-        this._keyDown = this._onKeyDown.bind(this);
-    }
-
-    _onKeyDown(e) {
-        var key = e.key || e.keyIdentifier || e.keyCode;
-        if (key === 'U+0052') {
-            this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
-        }
     }
 
     onEnter(options) {
         console.log('entering end state');
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
-        this._window.addEventListener('keydown', this._keyDown);
 
         var text = new PIXI.Text('Score\n' + options.score + '\npress R to restart', {
             fill: "#FFFFFF",
@@ -43,9 +34,14 @@ class EndState extends CoreState {
         this._container.addChild(text);
     }
 
+    update(dt) {
+        if (this._input.keysJustDown[Input.CharToKeyCode('R')]) {
+            this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+        }
+    }
+
     onLeave() {
         console.log('leaving end state');
-        this._window.removeEventListener('keydown', this._keyDown);
 
         this._layer.removeChild(this._container);
     }

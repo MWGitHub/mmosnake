@@ -391,6 +391,12 @@ class Shard {
             return;
         }
 
+        // Only change direction when nothing else given
+        if (!tick && !position && !segments) {
+            player.direction = direction;
+            return;
+        }
+
         // Only change directions if the player has not moved
         if (player.isSamePosition(position)) {
             if (!this.isMovingBackwards(player, direction)) {

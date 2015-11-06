@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create the core to update the main loop
         var core = new Core(window);
         core.updateStepSize = 1000 / 60;
-        core.renderStepSize = 1000 / 60;
+        core.renderStepSize = 1000 / 30;
         core.allowUpdateSkips = true;
         core.allowRenderSkips = true;
 
@@ -36,13 +36,13 @@ document.addEventListener('DOMContentLoaded', function() {
         core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-        var startState = new StartState(window, layer);
+        var startState = new StartState(layer, input);
         stateSwitcher.addState(startState);
         var gameState = new GameState(layer, input, resources);
         stateSwitcher.addState(gameState);
-        var endState = new EndState(window, layer);
+        var endState = new EndState(layer, input);
         stateSwitcher.addState(endState);
-        var botState = new BotState(window, layer);
+        var botState = new BotState(layer, input);
         stateSwitcher.addState(botState);
 
         stateSwitcher.enterState(startState);

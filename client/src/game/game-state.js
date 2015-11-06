@@ -626,6 +626,7 @@ class GameState extends CoreState {
         // Simulate a tick if a tick has passed
         if (this._timer.isReady()) {
             this._simulate();
+            this._generateDisplay();
             this._timer.reset();
         }
 
@@ -635,8 +636,6 @@ class GameState extends CoreState {
         this._camera.position.y += (finalCamera.y - this._camera.position.y) * 0.1;
 
         this._viewport.update();
-
-        this._generateDisplay();
     }
 
     onLeave() {

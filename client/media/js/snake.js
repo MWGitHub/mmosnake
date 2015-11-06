@@ -53041,6 +53041,10 @@ var _coreCoreState = require('../core/core-state');
 
 var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
 
+var _coreInput = require('../core/input');
+
+var _coreInput2 = _interopRequireDefault(_coreInput);
+
 var _socketIoClient = require('socket.io-client');
 
 var _socketIoClient2 = _interopRequireDefault(_socketIoClient);
@@ -53073,18 +53077,18 @@ var BotState = (function (_CoreState) {
 
     /**
      * Creates the game state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to get key events from.
      */
 
-    function BotState(window, layer) {
+    function BotState(layer, input) {
         _classCallCheck(this, BotState);
 
         _get(Object.getPrototypeOf(BotState.prototype), 'constructor', this).call(this);
 
         this.type = 'BotState';
 
-        this._window = window;
+        this._input = input;
         this._layer = layer;
         this._sockets = [];
 
@@ -53097,8 +53101,6 @@ var BotState = (function (_CoreState) {
 
         this._updateRate = 1000 / 5;
         this._currentTimer = 0;
-
-        this._keyDown = this._onKeyDown.bind(this);
     }
 
     _createClass(BotState, [{
@@ -53143,30 +53145,25 @@ var BotState = (function (_CoreState) {
             this._sockets.push(socket);
         }
     }, {
-        key: '_onKeyDown',
-        value: function _onKeyDown(e) {
-            var key = e.key || e.keyIdentifier || e.keyCode;
-            // Prevent spamming emits
-            if (this._previousKeyDown === key) return;
-            switch (key) {
-                case 'Up':
-                    this._createBot();
-                    break;
-                case 'Right':
-                    this._botRate++;
+        key: '_checkKeys',
+        value: function _checkKeys() {
+            if (this._input.keysJustDown[_coreInput2['default'].CharCodes.Up]) {
+                this._createBot();
+            }
+            if (this._input.keysJustDown[_coreInput2['default'].CharCodes.Right]) {
+                this._botRate++;
+                this._updateBotRateText();
+            }
+            if (this._input.keysJustDown[_coreInput2['default'].CharCodes.Down]) {
+                if (this._sockets.length > 0) {
+                    this._removeBot(this._sockets[0]);
+                }
+            }
+            if (this._input.keysJustDown[_coreInput2['default'].CharCodes.Left]) {
+                if (this._botRate > 0) {
+                    this._botRate -= 1;
                     this._updateBotRateText();
-                    break;
-                case 'Down':
-                    if (this._sockets.length > 0) {
-                        this._removeBot(this._sockets[0]);
-                    }
-                    break;
-                case 'Left':
-                    if (this._botRate > 0) {
-                        this._botRate -= 1;
-                        this._updateBotRateText();
-                    }
-                    break;
+                }
             }
         }
     }, {
@@ -53175,8 +53172,6 @@ var BotState = (function (_CoreState) {
             console.log('entering bot state');
             this._container = new _pixiJs2['default'].Container();
             this._layer.addChild(this._container);
-
-            this._window.addEventListener('keydown', this._keyDown);
 
             this._numBots = 0;
             this._botRate = 0;
@@ -53204,6 +53199,7 @@ var BotState = (function (_CoreState) {
     }, {
         key: 'update',
         value: function update(dt) {
+            this._checkKeys();
             if (this._currentTimer > this._updateRate) {
                 this._currentTimer = 0;
                 // Randomly direct the bots
@@ -53224,7 +53220,6 @@ var BotState = (function (_CoreState) {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving bot state');
-            this._window.removeEventListener('keydown', this._keyDown);
 
             for (var i = 0; i < this._sockets.length; i++) {
                 this._sockets[i].disconnect();
@@ -53240,7 +53235,7 @@ var BotState = (function (_CoreState) {
 exports['default'] = BotState;
 module.exports = exports['default'];
 
-},{"../../config.json":1,"../core/core-state":183,"../debug/debug":188,"lodash":38,"pixi.js":139,"socket.io-client":170}],190:[function(require,module,exports){
+},{"../../config.json":1,"../core/core-state":183,"../core/input":185,"../debug/debug":188,"lodash":38,"pixi.js":139,"socket.io-client":170}],190:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, '__esModule', {
     value: true
@@ -53260,6 +53255,10 @@ var _coreCoreState = require('../core/core-state');
 
 var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
 
+var _coreInput = require('../core/input');
+
+var _coreInput2 = _interopRequireDefault(_coreInput);
+
 var _pixiJs = require('pixi.js');
 
 var _pixiJs2 = _interopRequireDefault(_pixiJs);
@@ -53269,40 +53268,29 @@ var EndState = (function (_CoreState) {
 
     /**
      * Creates the end state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to attach events to.
      */
 
-    function EndState(window, layer) {
+    function EndState(layer, input) {
         _classCallCheck(this, EndState);
 
         _get(Object.getPrototypeOf(EndState.prototype), 'constructor', this).call(this);
 
         this.type = 'EndState';
 
-        this._window = window;
         this._layer = layer;
+        this._input = input;
 
         this._container = null;
-
-        this._keyDown = this._onKeyDown.bind(this);
     }
 
     _createClass(EndState, [{
-        key: '_onKeyDown',
-        value: function _onKeyDown(e) {
-            var key = e.key || e.keyIdentifier || e.keyCode;
-            if (key === 'U+0052') {
-                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
-            }
-        }
-    }, {
         key: 'onEnter',
         value: function onEnter(options) {
             console.log('entering end state');
             this._container = new _pixiJs2['default'].Container();
             this._layer.addChild(this._container);
-            this._window.addEventListener('keydown', this._keyDown);
 
             var text = new _pixiJs2['default'].Text('Score\n' + options.score + '\npress R to restart', {
                 fill: "#FFFFFF",
@@ -53313,10 +53301,16 @@ var EndState = (function (_CoreState) {
             this._container.addChild(text);
         }
     }, {
+        key: 'update',
+        value: function update(dt) {
+            if (this._input.keysJustDown[_coreInput2['default'].CharToKeyCode('R')]) {
+                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+            }
+        }
+    }, {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving end state');
-            this._window.removeEventListener('keydown', this._keyDown);
 
             this._layer.removeChild(this._container);
         }
@@ -53328,7 +53322,7 @@ var EndState = (function (_CoreState) {
 exports['default'] = EndState;
 module.exports = exports['default'];
 
-},{"../core/core-state":183,"pixi.js":139}],191:[function(require,module,exports){
+},{"../core/core-state":183,"../core/input":185,"pixi.js":139}],191:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -54025,6 +54019,7 @@ var GameState = (function (_CoreState) {
             // Simulate a tick if a tick has passed
             if (this._timer.isReady()) {
                 this._simulate();
+                this._generateDisplay();
                 this._timer.reset();
             }
 
@@ -54034,8 +54029,6 @@ var GameState = (function (_CoreState) {
             this._camera.position.y += (finalCamera.y - this._camera.position.y) * 0.1;
 
             this._viewport.update();
-
-            this._generateDisplay();
         }
     }, {
         key: 'onLeave',
@@ -54097,6 +54090,10 @@ var _coreCoreState = require('../core/core-state');
 
 var _coreCoreState2 = _interopRequireDefault(_coreCoreState);
 
+var _coreInput = require('../core/input');
+
+var _coreInput2 = _interopRequireDefault(_coreInput);
+
 var _pixiJs = require('pixi.js');
 
 var _pixiJs2 = _interopRequireDefault(_pixiJs);
@@ -54106,43 +54103,29 @@ var StartState = (function (_CoreState) {
 
     /**
      * Creates the end state.
-     * @param window the window to attach input events to.
      * @param {RenderLayer} layer the layer to add children to.
+     * @param {Input} input the input to attach events to.
      */
 
-    function StartState(window, layer) {
+    function StartState(layer, input) {
         _classCallCheck(this, StartState);
 
         _get(Object.getPrototypeOf(StartState.prototype), 'constructor', this).call(this);
 
         this.type = 'StartState';
 
-        this._window = window;
+        this._input = input;
         this._layer = layer;
 
         this._container = null;
-
-        this._keyDown = this._onKeyDown.bind(this);
     }
 
     _createClass(StartState, [{
-        key: '_onKeyDown',
-        value: function _onKeyDown(e) {
-            var key = e.key || e.keyIdentifier || e.keyCode;
-            if (key === 'U+0052') {
-                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
-            } else if (key === 'U+0042') {
-                console.log('s');
-                this.switcher.switchState(this, this.switcher.retrieveState('BotState'));
-            }
-        }
-    }, {
         key: 'onEnter',
         value: function onEnter() {
             console.log('entering start state');
             this._container = new _pixiJs2['default'].Container();
             this._layer.addChild(this._container);
-            this._window.addEventListener('keydown', this._keyDown);
 
             var text = new _pixiJs2['default'].Text('press R to start\npress B to enter bot mode', {
                 fill: "#FFFFFF",
@@ -54154,7 +54137,13 @@ var StartState = (function (_CoreState) {
         }
     }, {
         key: 'update',
-        value: function update(dt) {}
+        value: function update(dt) {
+            if (this._input.keysJustDown[_coreInput2['default'].CharToKeyCode('R')]) {
+                this.switcher.switchState(this, this.switcher.retrieveState('GameState'));
+            } else if (this._input.keysJustDown[_coreInput2['default'].CharToKeyCode('B')]) {
+                this.switcher.switchState(this, this.switcher.retrieveState('BotState'));
+            }
+        }
     }, {
         key: 'preRender',
         value: function preRender() {}
@@ -54162,7 +54151,6 @@ var StartState = (function (_CoreState) {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving start state');
-            this._window.removeEventListener('keydown', this._keyDown);
 
             this._layer.removeChild(this._container);
         }
@@ -54174,7 +54162,7 @@ var StartState = (function (_CoreState) {
 exports['default'] = StartState;
 module.exports = exports['default'];
 
-},{"../core/core-state":183,"pixi.js":139}],193:[function(require,module,exports){
+},{"../core/core-state":183,"../core/input":185,"pixi.js":139}],193:[function(require,module,exports){
 "use strict";
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -54233,7 +54221,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Create the core to update the main loop
         var core = new _coreCore2['default'](window);
         core.updateStepSize = 1000 / 60;
-        core.renderStepSize = 1000 / 60;
+        core.renderStepSize = 1000 / 30;
         core.allowUpdateSkips = true;
         core.allowRenderSkips = true;
 
@@ -54249,13 +54237,13 @@ document.addEventListener('DOMContentLoaded', function () {
         core.addLoopCallback(CoreCallbacks.preRender, stateSwitcher.preRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.postRender, stateSwitcher.postRender.bind(stateSwitcher));
         core.addLoopCallback(CoreCallbacks.update, stateSwitcher.update.bind(stateSwitcher));
-        var startState = new _gameStartState2['default'](window, layer);
+        var startState = new _gameStartState2['default'](layer, input);
         stateSwitcher.addState(startState);
         var gameState = new _gameGameState2['default'](layer, input, resources);
         stateSwitcher.addState(gameState);
-        var endState = new _gameEndState2['default'](window, layer);
+        var endState = new _gameEndState2['default'](layer, input);
         stateSwitcher.addState(endState);
-        var botState = new _gameBotState2['default'](window, layer);
+        var botState = new _gameBotState2['default'](layer, input);
         stateSwitcher.addState(botState);
 
         stateSwitcher.enterState(startState);
