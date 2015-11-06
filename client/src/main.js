@@ -13,6 +13,8 @@ import PIXI from 'pixi.js';
 var CoreCallbacks = Core.Callbacks;
 
 document.addEventListener('DOMContentLoaded', function() {
+    PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
+
     function start(resources) {
         var elapsed = {elapsed: 0};
         Debug.Globals.instance.addControl(elapsed, 'elapsed', {listen: true});
@@ -59,6 +61,10 @@ document.addEventListener('DOMContentLoaded', function() {
             elapsed.elapsed = core.timeElapsed;
         });
         core.resize(Config.screenWidth * Config.blockWidth, Config.screenHeight * Config.blockWidth);
+        // Resize game screen
+        // var canvas = document.getElementById('game');
+        // canvas.style.width = Config.screenWidth * Config.blockWidth * 2 + 'px';
+        // canvas.style.height = Config.screenHeight * Config.blockWidth * 2 + 'px';
     }
 
     var loader = PIXI.loader;

@@ -25,7 +25,7 @@ class StartState extends CoreState {
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
 
-        var text = new PIXI.Text('press R to start\npress B to enter bot mode', {
+        var text = new PIXI.Text('Press R to start\nPress B to enter bot mode', {
             fill: "#FFFFFF",
             align: 'center'
         });

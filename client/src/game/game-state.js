@@ -79,6 +79,22 @@ class GameState extends CoreState {
         this._scene = null;
 
         /**
+         * Layer to attach main display objects to.
+         * @type {PIXI.Container}
+         * @private
+         */
+        this._displayObjects = null;
+
+        /**
+         * Layer to attach shadows to.
+         * @type {PIXI.Container}
+         * @private
+         */
+        this._shadows = null;
+        this._shadowOffsetX = 3;
+        this._shadowOffsetY = 3;
+
+        /**
          * Camera used for the viewport.
          * @type {Camera}
          * @private
@@ -160,6 +176,12 @@ class GameState extends CoreState {
          */
         this._directionQueueSize = 2;
 
+        this._shadowFilter = new PIXI.filters.DropShadowFilter();
+        this._shadowFilter.alpha = 1;
+        this._shadowFilter.angle = 0.35;
+        this._shadowFilter.blur = 0;
+        this._shadowFilter.color = 0x3e8400;
+
         // Create an instance of a blocking texture
         this._blockTexture = new PIXI.RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new PIXI.Graphics();
@@ -219,6 +241,10 @@ class GameState extends CoreState {
         // Create the scene that objects will be placed in.
         this._scene = new ViewportScene();
         this._viewport.addScene(this._scene);
+        this._shadows = new PIXI.Container();
+        this._scene.display.addChild(this._shadows);
+        this._displayObjects = new PIXI.Container();
+        this._scene.display.addChild(this._displayObjects);
 
         // Connect to the server
         this._socket = io.connect(Config.host, {
@@ -426,11 +452,19 @@ class GameState extends CoreState {
             resource = 'head-south';
         }
 
+        // Create displayable player head
         var block = new PIXI.Sprite(this._resources[resource].texture);
         block.position.x = player.position.x * this._blockWidth;
         block.position.y = player.position.y * this._blockWidth;
         this._blocks.push(block);
-        this._scene.display.addChild(block);
+        this._displayObjects.addChild(block);
+        // Create shadow
+        block = new PIXI.Sprite(this._resources[resource].texture);
+        block.alpha = 0.5;
+        block.position.x = player.position.x * this._blockWidth + this._shadowOffsetX;
+        block.position.y = player.position.y * this._blockWidth + this._shadowOffsetY;
+        this._blocks.push(block);
+        this._shadows.addChild(block);
 
         // Generate the segment images
         for (var i = 0; i < player.segments.length; i++) {
@@ -473,11 +507,19 @@ class GameState extends CoreState {
                 resource = 'segment-northeast';
             }
 
+            // Create the display segment
             block = new PIXI.Sprite(this._resources[resource].texture);
             block.position.x = segment.x * this._blockWidth;
             block.position.y = segment.y * this._blockWidth;
             this._blocks.push(block);
-            this._scene.display.addChild(block);
+            this._displayObjects.addChild(block);
+            // Create the shadow
+            block = new PIXI.Sprite(this._resources[resource].texture);
+            block.alpha = 0.5;
+            block.position.x = segment.x * this._blockWidth + this._shadowOffsetX;
+            block.position.y = segment.y * this._blockWidth + this._shadowOffsetY;
+            this._blocks.push(block);
+            this._shadows.addChild(block);
         }
     }
 
@@ -488,7 +530,7 @@ class GameState extends CoreState {
     _generateDisplay() {
         var i;
         for (i = 0; i < this._blocks.length; i++) {
-            this._scene.display.removeChild(this._blocks[i]);
+            this._blocks[i].parent.removeChild(this._blocks[i]);
         }
         // Generate graphics for static objects
         this._blocks = [];
@@ -498,17 +540,27 @@ class GameState extends CoreState {
             for (var col = 0; col < this._grid[row].length; col++) {
                 var block = null;
                 var key = this._grid[row][col];
+                var renderTexture = null;
                 if (key === gridKey.block) {
-                    block = new PIXI.Sprite(this._blockTexture);
+                    renderTexture = this._blockTexture;
                 } else if (key === gridKey.food) {
-                    block = new PIXI.Sprite(this._foodTexture);
+                    renderTexture = this._foodTexture;
                 }
 
-                if (block) {
+                if (renderTexture) {
+                    // Create the block display
+                    block = new PIXI.Sprite(renderTexture);
                     block.position.x = startX + col * this._blockWidth;
                     block.position.y = startY + row * this._blockWidth;
                     this._blocks.push(block);
-                    this._scene.display.addChild(block);
+                    this._displayObjects.addChild(block);
+                    // Create the shadow
+                    block = new PIXI.Sprite(renderTexture);
+                    block.alpha = 0.5;
+                    block.position.x = startX + col * this._blockWidth + this._shadowOffsetX;
+                    block.position.y = startY + row * this._blockWidth + this._shadowOffsetY;
+                    this._blocks.push(block);
+                    this._displayObjects.addChild(block);
                 }
             }
         }

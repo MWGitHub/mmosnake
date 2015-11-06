@@ -6,7 +6,29 @@ html, body {
 }
 
 body {
-  background-color: #CCC;
+  background-color: #000;
+  color: #FEFEFE;
+}
+
+.header {
+  h1 {
+    margin: 0;
+    padding: 0.25rem;
+    font-size: 1.3em;
+  }
+  width: 100%;
+  margin: 0 auto 1rem 0;
+  background-color: #333;
+}
+
+.instructions {
+  h2 {
+    margin: 0;
+    padding: 0;
+    font-size: 1.2em;
+  }
+  width: 336px;
+  margin: 0 auto;
 }
 
 #content {
@@ -18,4 +40,6 @@ body {
 
 #game {
   box-shadow: 0 0 1em black;
+  border: double 5px #CCC;
+  margin-bottom: 1rem;
 }

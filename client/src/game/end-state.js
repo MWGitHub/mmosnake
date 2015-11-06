@@ -25,7 +25,7 @@ class EndState extends CoreState {
         this._container = new PIXI.Container();
         this._layer.addChild(this._container);
 
-        var text = new PIXI.Text('Score\n' + options.score + '\npress R to restart', {
+        var text = new PIXI.Text('Score\n' + options.score + '\nPress R to restart', {
             fill: "#FFFFFF",
             align: 'center'
         });

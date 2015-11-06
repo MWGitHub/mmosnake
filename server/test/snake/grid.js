@@ -240,6 +240,23 @@ describe('grid', function() {
         sub = grid.getGridArray(2, 2, 3, 3, 1);
         assert.equal(getBlockCount(sub), 16);
 
+        // 1 1 1 1 1 1 1
+        // 1 0 0 0 0 0 1
+        // 1 0 0 0 0 0 1
+        // 1 0 0 0 0 0 1
+        // 1 0 0 0 0 0 1
+        // 1 0 0 0 0 0 1
+        // 1 1 1 1 1 1 1
+        grid = new Grid(7, 7, true);
+        sub = grid.getGridArray(3, 0, 1, 1, 2);
+        assert.equal(getBlockCount(sub), 5);
+
+        sub = grid.getGridArray(3, 3, 3, 3, 1);
+        assert.equal(getBlockCount(sub), 0);
+
+        sub = grid.getGridArray(3, 3, 3, 3, 2);
+        assert.equal(getBlockCount(sub), 24);
+
         done();
     });
 });

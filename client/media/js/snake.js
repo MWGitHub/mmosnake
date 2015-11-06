@@ -1,9 +1,9 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports={
-  "host": "https://msnake-server.herokuapp.com/",
+  "host": "localhost:5000",
   "screenWidth": 21,
   "screenHeight": 15,
-  "screenBuffer": 2,
+  "screenBuffer": 3,
   "leniency": 2,
   "blockWidth": 16,
   "tickRate": 6
@@ -53292,7 +53292,7 @@ var EndState = (function (_CoreState) {
             this._container = new _pixiJs2['default'].Container();
             this._layer.addChild(this._container);
 
-            var text = new _pixiJs2['default'].Text('Score\n' + options.score + '\npress R to restart', {
+            var text = new _pixiJs2['default'].Text('Score\n' + options.score + '\nPress R to restart', {
                 fill: "#FFFFFF",
                 align: 'center'
             });
@@ -53449,6 +53449,22 @@ var GameState = (function (_CoreState) {
         this._scene = null;
 
         /**
+         * Layer to attach main display objects to.
+         * @type {PIXI.Container}
+         * @private
+         */
+        this._displayObjects = null;
+
+        /**
+         * Layer to attach shadows to.
+         * @type {PIXI.Container}
+         * @private
+         */
+        this._shadows = null;
+        this._shadowOffsetX = 3;
+        this._shadowOffsetY = 3;
+
+        /**
          * Camera used for the viewport.
          * @type {Camera}
          * @private
@@ -53530,6 +53546,12 @@ var GameState = (function (_CoreState) {
          */
         this._directionQueueSize = 2;
 
+        this._shadowFilter = new _pixiJs2['default'].filters.DropShadowFilter();
+        this._shadowFilter.alpha = 1;
+        this._shadowFilter.angle = 0.35;
+        this._shadowFilter.blur = 0;
+        this._shadowFilter.color = 0x3e8400;
+
         // Create an instance of a blocking texture
         this._blockTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
         var graphics = new _pixiJs2['default'].Graphics();
@@ -53595,6 +53617,10 @@ var GameState = (function (_CoreState) {
             // Create the scene that objects will be placed in.
             this._scene = new _pixiViewport.ViewportScene();
             this._viewport.addScene(this._scene);
+            this._shadows = new _pixiJs2['default'].Container();
+            this._scene.display.addChild(this._shadows);
+            this._displayObjects = new _pixiJs2['default'].Container();
+            this._scene.display.addChild(this._displayObjects);
 
             // Connect to the server
             this._socket = _socketIoClient2['default'].connect(_configJson2['default'].host, {
@@ -53810,11 +53836,19 @@ var GameState = (function (_CoreState) {
                 resource = 'head-south';
             }
 
+            // Create displayable player head
             var block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
             block.position.x = player.position.x * this._blockWidth;
             block.position.y = player.position.y * this._blockWidth;
             this._blocks.push(block);
-            this._scene.display.addChild(block);
+            this._displayObjects.addChild(block);
+            // Create shadow
+            block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+            block.alpha = 0.5;
+            block.position.x = player.position.x * this._blockWidth + this._shadowOffsetX;
+            block.position.y = player.position.y * this._blockWidth + this._shadowOffsetY;
+            this._blocks.push(block);
+            this._shadows.addChild(block);
 
             // Generate the segment images
             for (var i = 0; i < player.segments.length; i++) {
@@ -53857,11 +53891,19 @@ var GameState = (function (_CoreState) {
                     resource = 'segment-northeast';
                 }
 
+                // Create the display segment
                 block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
                 block.position.x = segment.x * this._blockWidth;
                 block.position.y = segment.y * this._blockWidth;
                 this._blocks.push(block);
-                this._scene.display.addChild(block);
+                this._displayObjects.addChild(block);
+                // Create the shadow
+                block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
+                block.alpha = 0.5;
+                block.position.x = segment.x * this._blockWidth + this._shadowOffsetX;
+                block.position.y = segment.y * this._blockWidth + this._shadowOffsetY;
+                this._blocks.push(block);
+                this._shadows.addChild(block);
             }
         }
 
@@ -53874,7 +53916,7 @@ var GameState = (function (_CoreState) {
         value: function _generateDisplay() {
             var i;
             for (i = 0; i < this._blocks.length; i++) {
-                this._scene.display.removeChild(this._blocks[i]);
+                this._blocks[i].parent.removeChild(this._blocks[i]);
             }
             // Generate graphics for static objects
             this._blocks = [];
@@ -53884,17 +53926,27 @@ var GameState = (function (_CoreState) {
                 for (var col = 0; col < this._grid[row].length; col++) {
                     var block = null;
                     var key = this._grid[row][col];
+                    var renderTexture = null;
                     if (key === gridKey.block) {
-                        block = new _pixiJs2['default'].Sprite(this._blockTexture);
+                        renderTexture = this._blockTexture;
                     } else if (key === gridKey.food) {
-                        block = new _pixiJs2['default'].Sprite(this._foodTexture);
+                        renderTexture = this._foodTexture;
                     }
 
-                    if (block) {
+                    if (renderTexture) {
+                        // Create the block display
+                        block = new _pixiJs2['default'].Sprite(renderTexture);
                         block.position.x = startX + col * this._blockWidth;
                         block.position.y = startY + row * this._blockWidth;
                         this._blocks.push(block);
-                        this._scene.display.addChild(block);
+                        this._displayObjects.addChild(block);
+                        // Create the shadow
+                        block = new _pixiJs2['default'].Sprite(renderTexture);
+                        block.alpha = 0.5;
+                        block.position.x = startX + col * this._blockWidth + this._shadowOffsetX;
+                        block.position.y = startY + row * this._blockWidth + this._shadowOffsetY;
+                        this._blocks.push(block);
+                        this._displayObjects.addChild(block);
                     }
                 }
             }
@@ -54141,7 +54193,7 @@ var StartState = (function (_CoreState) {
             this._container = new _pixiJs2['default'].Container();
             this._layer.addChild(this._container);
 
-            var text = new _pixiJs2['default'].Text('press R to start\npress B to enter bot mode', {
+            var text = new _pixiJs2['default'].Text('Press R to start\nPress B to enter bot mode', {
                 fill: "#FFFFFF",
                 align: 'center'
             });
@@ -54228,6 +54280,8 @@ var _pixiJs2 = _interopRequireDefault(_pixiJs);
 var CoreCallbacks = _coreCore2['default'].Callbacks;
 
 document.addEventListener('DOMContentLoaded', function () {
+    _pixiJs2['default'].SCALE_MODES.DEFAULT = _pixiJs2['default'].SCALE_MODES.NEAREST;
+
     function start(resources) {
         var elapsed = { elapsed: 0 };
         _debugDebug2['default'].Globals.instance.addControl(elapsed, 'elapsed', { listen: true });
@@ -54274,6 +54328,10 @@ document.addEventListener('DOMContentLoaded', function () {
             elapsed.elapsed = core.timeElapsed;
         });
         core.resize(_configJson2['default'].screenWidth * _configJson2['default'].blockWidth, _configJson2['default'].screenHeight * _configJson2['default'].blockWidth);
+        // Resize game screen
+        // var canvas = document.getElementById('game');
+        // canvas.style.width = Config.screenWidth * Config.blockWidth * 2 + 'px';
+        // canvas.style.height = Config.screenHeight * Config.blockWidth * 2 + 'px';
     }
 
     var loader = _pixiJs2['default'].loader;

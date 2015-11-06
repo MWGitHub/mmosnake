@@ -242,9 +242,6 @@ class Shard {
      */
     _updatePlayer(player, isForced) {
         if (player.isAlive) {
-            if (isForced) {
-                player.lastUpdateTick = this._tick;
-            }
             player.socket.emit(internals.commands.update, this._createPlayerInfo(player, isForced));
         }
     }
@@ -417,7 +414,6 @@ class Shard {
             } else {
                 // Player has moved on the client side within leniency, overwrite server
                 player.direction = direction;
-                player.lastUpdateTick = tick;
                 player.position = position;
                 player.segments = segments;
             }
@@ -473,7 +469,6 @@ class Shard {
             player.segments = [{x: start.x, y: start.y}, {x: start.x, y: start.y}, {x: start.x, y: start.y}];
             player.isAlive = true;
         }
-        player.lastUpdateTick = this._tick;
 
         player.socket.emit(internals.commands.start, this._createPlayerInfo(player, true));
     }
