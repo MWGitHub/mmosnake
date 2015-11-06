@@ -23,7 +23,8 @@ var cardinal = {
 };
 
 var debug = {
-    index: 0,
+    pX: 0,
+    pY: 0,
     direction: 0,
     isAlive: false,
     length: 0,
@@ -101,7 +102,7 @@ class GameState extends CoreState {
          */
         this._player = {
             id: 0,
-            index: 0,
+            position: {x: 0, y: 0},
             direction: 0,
             segments: []
         };
@@ -174,7 +175,8 @@ class GameState extends CoreState {
     };
 
     onAdd() {
-        Debug.Globals.instance.addControl(debug, 'index', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'pX', {listen: true});
+        Debug.Globals.instance.addControl(debug, 'pY', {listen: true});
         Debug.Globals.instance.addControl(debug, 'direction', {listen: true});
         Debug.Globals.instance.addControl(debug, 'isAlive', {listen: true});
         Debug.Globals.instance.addControl(debug, 'length', {listen: true});
@@ -229,7 +231,7 @@ class GameState extends CoreState {
                     this._isRunning = true;
 
                     this._player.id = data.id;
-                    this._player.index = data.index;
+                    this._player.position = data.position;
                     this._player.direction = data.direction;
                     this._player.segments = data.segments;
 
@@ -239,7 +241,8 @@ class GameState extends CoreState {
                     this._camera.position.y = camera.y;
 
                     debug.players = data.players.length;
-                    debug.index = data.index;
+                    debug.pX = data.position.x;
+                    debug.pY = data.position.y;
                     debug.isAlive = data.isAlive;
                     debug.direction = data.direction;
                     debug.length = data.segments.length;
@@ -270,7 +273,7 @@ class GameState extends CoreState {
                     this._players = data.players;
                     this._tick = data.tick;
 
-                    this._player.index = data.index;
+                    this._player.position = data.position;
                     this._player.segments = data.segments;
                 });
             });
@@ -304,14 +307,16 @@ class GameState extends CoreState {
         this._tick = data.tick;
 
         // Override client player if last update was too long ago or is forced
+        data.isForced = true;
         if (data.isForced || this._tick - previousTick > this._leniency) {
             console.log('forced');
-            this._player.index = data.index;
+            this._player.position = data.position;
             this._player.segments = data.segments;
         }
 
         debug.players = data.players.length;
-        debug.index = data.index;
+        debug.pX = data.position.x;
+        debug.pY = data.position.y;
         debug.isAlive = data.isAlive;
         debug.direction = data.direction;
         debug.length = data.segments.length;
@@ -346,7 +351,7 @@ class GameState extends CoreState {
                     if (!this._socket) return;
                     this._socket.emit(commands.direct, {
                         tick: this._tick,
-                        index: this._player.index,
+                        position: this._player.position,
                         segments: this._player.segments,
                         direction: direction
                     });
@@ -363,10 +368,8 @@ class GameState extends CoreState {
      */
     _renderPlayer(player, isLocalPlayer) {
         var block = new PIXI.Sprite(this._snakeTexture);
-        var col = player.index % this._width;
-        var row = Math.floor(player.index / this._width);
-        block.position.x = col * this._blockWidth;
-        block.position.y = row * this._blockWidth;
+        block.position.x = player.position.x * this._blockWidth;
+        block.position.y = player.position.y * this._blockWidth;
         this._blocks.push(block);
         this._scene.display.addChild(block);
 
@@ -374,10 +377,8 @@ class GameState extends CoreState {
             var segment = player.segments[i];
 
             block = new PIXI.Sprite(this._snakeTexture);
-            col = segment % this._width;
-            row = Math.floor(segment / this._width);
-            block.position.x = col * this._blockWidth;
-            block.position.y = row * this._blockWidth;
+            block.position.x = segment.x * this._blockWidth;
+            block.position.y = segment.y * this._blockWidth;
             this._blocks.push(block);
             this._scene.display.addChild(block);
         }
@@ -396,32 +397,28 @@ class GameState extends CoreState {
         this._blocks = [];
         var startX = this._subgridBounds.x1 * this._blockWidth;
         var startY = this._subgridBounds.y1 * this._blockWidth;
-        var width = this._subgridBounds.x2 - this._subgridBounds.x1;
-        for (i = 0; i < this._grid.length; i++) {
-            var block = null;
-            var key = this._grid[i];
-            if (key === gridKey.blocked) {
-                block = new PIXI.Sprite(this._blockTexture);
-            } else if (key === gridKey.food) {
-                block = new PIXI.Sprite(this._foodTexture);
-            }
+        for (var row = 0; row < this._grid.length; row++) {
+            for (var col = 0; col < this._grid[row].length; col++) {
+                var block = null;
+                var key = this._grid[row][col];
+                if (key === gridKey.blocked) {
+                    block = new PIXI.Sprite(this._blockTexture);
+                } else if (key === gridKey.food) {
+                    block = new PIXI.Sprite(this._foodTexture);
+                }
 
-            if (block) {
-                var col = i % width;
-                var row = Math.floor(i / width);
-                block.position.x = startX + col * this._blockWidth;
-                block.position.y = startY + row * this._blockWidth;
-                this._blocks.push(block);
-                this._scene.display.addChild(block);
+                if (block) {
+                    block.position.x = startX + col * this._blockWidth;
+                    block.position.y = startY + row * this._blockWidth;
+                    this._blocks.push(block);
+                    this._scene.display.addChild(block);
+                }
             }
         }
         // Generate graphics for the players
         for (i = 0; i < this._players.length; i++) {
             var player = this._players[i];
-            // Player renders more often than other players
-            if (player.id === this._player.id) {
-                continue;
-            } else {
+            if (player.id !== this._player.id) {
                 this._renderPlayer(player, false);
             }
         }
@@ -435,8 +432,8 @@ class GameState extends CoreState {
      * @private
      */
     _getPlayerCameraPosition() {
-        var x = this._player.index % this._width * this._blockWidth;
-        var y = Math.floor(this._player.index / this._width) * this._blockWidth;
+        var x = this._player.position.x * this._blockWidth;
+        var y = this._player.position.y * this._blockWidth;
         // Keep camera in bounds
         if (x < this._viewport.width / 2) {
             x = this._viewport.width / 2;
@@ -515,7 +512,7 @@ class GameState extends CoreState {
 
         // Simulate a tick if a tick has passed
         if (this._timer.isReady()) {
-            this._simulate();
+            //this._simulate();
             this._timer.reset();
         }
 

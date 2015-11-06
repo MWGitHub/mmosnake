@@ -368,6 +368,7 @@ class Shard {
             console.log('direction changed');
             player.direction = direction;
         } else {
+            console.log(direction);
             // Check if player position differs too much from the server position
             var distance = Math.pow(player.position.x - position.x, 2) + Math.pow(player.position.y - position.y, 2);
             var isOutOfSync = this._tick - tick > this._leniency;
@@ -444,7 +445,7 @@ class Shard {
         });
 
         socket.on(internals.receives.direct, (data) => {
-            this._direct(player, data.tick, data.index, data.segments, data.direction);
+            this._direct(player, data.tick, data.position, data.segments, data.direction);
         });
 
         this._start(player, snake);

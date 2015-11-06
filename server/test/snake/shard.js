@@ -247,4 +247,48 @@ describe('shard', function() {
 
         done();
     });
+
+    it('player should be able to change directions', function(done) {
+        // 1 1 1 1 1
+        // 1 3 3 0 1
+        // 1 0 3 0 1
+        // 1 0 3 0 1
+        // 1 1 1 1 1
+        // 4 ticks to die
+        var shard = new Shard(defaultDimensions, defaultDimensions);
+        shard.setup();
+        var serverSocket = new Socket();
+        var clientSocket = new Socket();
+
+        var ticks = 0;
+        var updateListener = function(data) {
+            ticks++;
+            clientSocket.removeListener('update', updateListener);
+            
+            clientSocket.emit('direct', {
+                ticks: data.ticks,
+                position: data.position,
+                segments: data.segments,
+                direction: Grid.Cardinal.S
+            });
+
+            // After turning tick until dead
+            clientSocket.on('update', function(data) {
+                ticks++;
+                shard.tick();
+            });
+            shard.tick();
+        };
+        clientSocket.on('update', updateListener);
+
+        clientSocket.on('die', function() {
+            assert.equal(ticks, 4);
+            done();
+        });
+
+        serverSocket.link(clientSocket);
+        shard.addSocket(serverSocket, defaultStart);
+        ticks++;
+        shard.tick();
+    });
 });
