@@ -36,7 +36,7 @@ class Timer {
      * @returns {boolean}
      */
     isReady() {
-        return this._currentTime > this.period;
+        return this._currentTime >= this.period;
     }
 }
 

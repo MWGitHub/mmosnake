@@ -53955,6 +53955,7 @@ var GameState = (function (_CoreState) {
         key: 'onLeave',
         value: function onLeave() {
             console.log('leaving game state');
+            this._timer.reset();
             this._isRunning = false;
 
             if (this._socket) {
@@ -54123,8 +54124,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Create the core to update the main loop
     var core = new _coreCore2['default'](window);
-    core.updateStepSize = 1000 / 30;
-    core.renderStepSize = 1000 / 30;
+    core.updateStepSize = 1000 / 60;
+    core.renderStepSize = 1000 / 60;
     core.allowUpdateSkips = true;
     core.allowRenderSkips = true;
 
@@ -54601,7 +54602,7 @@ var Timer = (function () {
          * @returns {boolean}
          */
         value: function isReady() {
-            return this._currentTime > this.period;
+            return this._currentTime >= this.period;
         }
     }, {
         key: "currentTime",

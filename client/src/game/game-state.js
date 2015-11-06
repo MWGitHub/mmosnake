@@ -555,6 +555,7 @@ class GameState extends CoreState {
 
     onLeave() {
         console.log('leaving game state');
+        this._timer.reset();
         this._isRunning = false;
 
         if (this._socket) {
