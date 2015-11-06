@@ -53539,11 +53539,7 @@ var GameState = (function (_CoreState) {
         this._blockTexture.render(graphics);
 
         // Create an instance of the food texture
-        this._foodTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockHeight);
-        graphics = new _pixiJs2['default'].Graphics();
-        graphics.beginFill(0xFFFFFF, 1);
-        graphics.drawCircle(this._blockWidth / 2, this._blockWidth / 2, this._blockWidth / 2);
-        this._foodTexture.render(graphics);
+        this._foodTexture = this._resources['food'].texture;
 
         // Create an instance of a snake texture
         this._snakeTexture = new _pixiJs2['default'].RenderTexture(layer.renderer, this._blockWidth, this._blockWidth);
@@ -53802,12 +53798,25 @@ var GameState = (function (_CoreState) {
     }, {
         key: '_renderPlayer',
         value: function _renderPlayer(player, isLocalPlayer) {
-            var block = new _pixiJs2['default'].Sprite(this._snakeTexture);
+            var resource = 'head-north';
+            var prevSegment = player.segments[0];
+            var dx = player.position.x - prevSegment.x;
+            var dy = player.position.y - prevSegment.y;
+            if (dx < 0) {
+                resource = 'head-west';
+            } else if (dx > 0) {
+                resource = 'head-east';
+            } else if (dy > 0) {
+                resource = 'head-south';
+            }
+
+            var block = new _pixiJs2['default'].Sprite(this._resources[resource].texture);
             block.position.x = player.position.x * this._blockWidth;
             block.position.y = player.position.y * this._blockWidth;
             this._blocks.push(block);
             this._scene.display.addChild(block);
 
+            // Generate the segment images
             for (var i = 0; i < player.segments.length; i++) {
                 var segment = player.segments[i];
                 var dxPrev = 0;
@@ -53826,9 +53835,14 @@ var GameState = (function (_CoreState) {
                     dyNext = player.segments[i + 1].y - segment.y;
                 }
                 var sumX = dxPrev + dxNext;
-                var sumY = dyNext + dyNext;
+                var sumY = dyPrev + dyNext;
 
-                var resource = 'segment-vertical';
+                /*
+                console.log('xp: ' + dxPrev + ' yp: ' + dyPrev +
+                    '  xn: ' + dxNext + '  yn: ' + dyNext +
+                    '  sx: ' + sumX + '    sy: ' + sumY);
+                */
+                resource = 'segment-vertical';
                 if (sumX === 0 && dyPrev !== dyNext) {
                     resource = 'segment-vertical';
                 } else if (dxPrev !== dxNext && sumY === 0) {
@@ -54269,9 +54283,13 @@ document.addEventListener('DOMContentLoaded', function () {
     loader.add('segment-northwest', '/media/images/segment-northwest.png');
     loader.add('segment-horizontal', '/media/images/segment-horizontal.png');
     loader.add('segment-vertical', '/media/images/segment-vertical.png');
+    loader.add('head-north', '/media/images/head-north.png');
+    loader.add('head-east', '/media/images/head-east.png');
+    loader.add('head-south', '/media/images/head-south.png');
+    loader.add('head-west', '/media/images/head-west.png');
+    loader.add('food', '/media/images/food.png');
 
     loader.load(function (loader, resources) {
-        console.log(resources);
         start(resources);
     });
 });

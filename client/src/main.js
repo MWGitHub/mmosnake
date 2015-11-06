@@ -68,9 +68,13 @@ document.addEventListener('DOMContentLoaded', function() {
     loader.add('segment-northwest', '/media/images/segment-northwest.png');
     loader.add('segment-horizontal', '/media/images/segment-horizontal.png');
     loader.add('segment-vertical', '/media/images/segment-vertical.png');
+    loader.add('head-north', '/media/images/head-north.png');
+    loader.add('head-east', '/media/images/head-east.png');
+    loader.add('head-south', '/media/images/head-south.png');
+    loader.add('head-west', '/media/images/head-west.png');
+    loader.add('food', '/media/images/food.png');
 
     loader.load(function(loader, resources) {
-        console.log(resources);
         start(resources);
     });
 });
