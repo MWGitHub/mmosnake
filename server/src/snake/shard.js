@@ -336,46 +336,40 @@ class Shard {
 
     /**
      * Checks if the directions given are the opposite.
-     * @param {*} player the player to check.
-     * @param {number} d1 the first direction.
-     * @param {number} d2 the second direction.
+     * @param {Player} player the player to check.
+     * @param {number} direction the direction to check.
      * @returns {boolean} true if the directions are opposite.
      */
-    _isOppositeDirection(player, d1, d2) {
-        // Check if trying to move into the previous segment (happens when multiple times between ticks)
-        var next = this._grid.getIndexInDirection(player.index, d1);
-        if (player.segments.length > 0 && player.segments[0] === next) {
-            return true;
+    isMovingBackwards(player, direction) {
+        // Check if trying to move into the previous segment
+        var next = this._grid.getCoordinatesInDirection(player.position.x, player.position.y, direction);
+        if (player.segments.length > 0) {
+            var segment = player.segments[0];
+            return next.x === segment.x && next.y === segment.y;
         }
-        // Check if trying to move backwards
-        return (d1 === Grid.Cardinal.N && d2 === Grid.Cardinal.S ||
-        d1 === Grid.Cardinal.S && d2 === Grid.Cardinal.N ||
-        d1 === Grid.Cardinal.E && d2 === Grid.Cardinal.W ||
-        d1 === Grid.Cardinal.W && d2 === Grid.Cardinal.E);
+        return false;
     }
 
     /**
      * Updates the player's info if valid.
      * @param {Player} player the player to direct.
      * @param {number} tick the last tick the player received.
-     * @param {number} index the index of the player's head.
-     * @param {Array.<number>} segments the segments of the player.
+     * @param {{x: number, y: number}} position the position of the player's head.
+     * @param {Array.<{x: number, y: number}>} segments the segments of the player.
      * @param {number} direction the direction to set to.
      */
-    _direct(player, tick, index, segments, direction) {
+    _direct(player, tick, position, segments, direction) {
         // Remove the player if an invalid direction is given
         if (!_.includes(Grid.Cardinal, direction)) {
             console.log('invalid');
             this.removePlayer(player);
-        } else if (player.index === index) {
+        } else if (player.isSamePosition(position)) {
             // Only change directions if the player has not moved
             console.log('direction changed');
             player.direction = direction;
         } else {
             // Check if player position differs too much from the server position
-            var serverCoords = this._grid.getCoordinatesAtIndex(player.index);
-            var clientCoords = this._grid.getCoordinatesAtIndex(index);
-            var distance = Math.pow(serverCoords.x - clientCoords.x, 2) + Math.pow(serverCoords.y - clientCoords.y, 2);
+            var distance = Math.pow(player.position.x - position.x, 2) + Math.pow(player.position.y - position.y, 2);
             var isOutOfSync = this._tick - tick > this._leniency;
             var isTooFar = distance > this._leniency * this._leniency;
             if (isOutOfSync || isTooFar) {
@@ -384,18 +378,18 @@ class Shard {
                 } else if (isTooFar) {
                     console.log('too far');
                 }
-                // Ignore new direction if moving backwards
-                if (!this._isOppositeDirection(player, direction, player.direction)) {
+                // Ignore new direction if moving backwards (player has old data so client won't check correctly)
+                if (!this.isMovingBackwards(player, direction)) {
                     player.direction = direction;
                 }
+                // Overwrite client data
                 player.socket.emit(internals.commands.update, this._createPlayerInfo(player, true));
             } else {
-                player.direction = direction;
-
+                // Player has moved on the client side within leniency, overwrite server
                 console.log('moved');
-                // Only update if the player has moved
+                player.direction = direction;
                 player.lastUpdateTick = tick;
-                player.index = index;
+                player.position = position;
                 player.segments = segments;
             }
         }
@@ -484,14 +478,6 @@ class Shard {
                 return s;
             }
         });
-    }
-
-    /**
-     * Retrieves the grid array of the shard.
-     * @returns {Array.<number>}
-     */
-    getGridArray() {
-        return this._grid.getGridArray();
     }
 }
 

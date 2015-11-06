@@ -4,6 +4,7 @@ var Lab = require('lab');
 var Shard = require('../../src/snake/shard');
 var Socket = require('../fake-socket');
 var Grid = require('../../src/snake/grid');
+var Player = require('../../src/snake/player');
 
 var lab = exports.lab = Lab.script();
 var describe = lab.describe;
@@ -185,7 +186,7 @@ describe('shard', function() {
             return blocks - edgeBlockCount;
         };
 
-        var shard = new Shard(7, 7, true);
+        var shard = new Shard(7, 7);
         shard.setup();
         var serverSocket = new Socket();
         var clientSocket = new Socket();
@@ -231,5 +232,19 @@ describe('shard', function() {
 
         ticks++;
         shard.tick();
+    });
+
+    it('should guard against moving backwards', function(done) {
+        var shard = new Shard(defaultDimensions, defaultDimensions);
+        var player = new Player(null);
+
+        player.direction = Grid.Cardinal.E;
+        player.position.x = 2;
+        player.position.y = 1;
+        player.segments = [{x: 1, y: 1}, {x: 1, y: 1}, {x: 1, y: 1}];
+        assert.equal(shard.isMovingBackwards(player, Grid.Cardinal.S), false);
+        assert.equal(shard.isMovingBackwards(player, Grid.Cardinal.W), true);
+
+        done();
     });
 });

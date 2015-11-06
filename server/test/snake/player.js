@@ -11,10 +11,10 @@ describe('player', function() {
     it('should compare head points', function(done) {
         var player = new Player(null);
 
-        assert.equal(player.x, 0);
-        assert.equal(player.y, 0);
+        assert.equal(player.position.x, 0);
+        assert.equal(player.position.y, 0);
         assert.ok(player.isSamePosition({x: 0, y: 0}));
-        player.x = 1;
+        player.position.x = 1;
         assert.equal(player.isSamePosition({x: 0, y: 0}), false);
         assert.ok(player.isSamePosition({x: 1, y: 0}));
 
